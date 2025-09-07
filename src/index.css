@@ -2,41 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Smart Traffic Management Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Smart City Theme - Light Mode */
+    --background: 220 13% 98%;
+    --foreground: 220 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Traffic Authority Blue */
+    --primary: 220 85% 25%;
+    --primary-foreground: 220 13% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Traffic Green */
+    --secondary: 120 60% 35%;
+    --secondary-foreground: 120 13% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 13% 95%;
+    --muted-foreground: 220 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Traffic Amber/Warning */
+    --accent: 45 95% 55%;
+    --accent-foreground: 45 15% 15%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Emergency Red */
+    --destructive: 0 85% 55%;
+    --destructive-foreground: 0 13% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 220 85% 25%;
 
-    --radius: 0.5rem;
+    /* Traffic Light Colors */
+    --traffic-green: 120 85% 45%;
+    --traffic-amber: 45 95% 55%;
+    --traffic-red: 0 85% 55%;
+
+    /* Emergency & Priority */
+    --emergency: 0 90% 50%;
+    --emergency-foreground: 0 13% 98%;
+    --priority: 280 85% 55%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220, 85%, 25%), hsl(220, 85%, 35%));
+    --gradient-emergency: linear-gradient(135deg, hsl(0, 90%, 50%), hsl(0, 90%, 60%));
+    --gradient-success: linear-gradient(135deg, hsl(120, 60%, 35%), hsl(120, 60%, 45%));
+
+    /* Shadows & Effects */
+    --shadow-traffic: 0 4px 20px hsl(220 85% 25% / 0.15);
+    --shadow-emergency: 0 4px 20px hsl(0 90% 50% / 0.25);
+    --glow-green: 0 0 20px hsl(120 85% 45% / 0.5);
+    --glow-red: 0 0 20px hsl(0 85% 55% / 0.5);
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,41 +80,66 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Smart City Theme - Dark Mode (Control Room) */
+    --background: 220 25% 8%;
+    --foreground: 220 13% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 220 25% 10%;
+    --card-foreground: 220 13% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 25% 10%;
+    --popover-foreground: 220 13% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    /* Traffic Authority Blue - Brighter in dark */
+    --primary: 220 85% 55%;
+    --primary-foreground: 220 25% 8%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    /* Traffic Green - Brighter in dark */
+    --secondary: 120 70% 50%;
+    --secondary-foreground: 120 25% 8%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 220 25% 15%;
+    --muted-foreground: 220 15% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    /* Traffic Amber - High contrast */
+    --accent: 45 95% 65%;
+    --accent-foreground: 45 25% 8%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    /* Emergency Red - Bright alert */
+    --destructive: 0 90% 60%;
+    --destructive-foreground: 0 25% 8%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 220 25% 20%;
+    --input: 220 25% 15%;
+    --ring: 220 85% 55%;
+
+    --sidebar-background: 220 25% 6%;
+    --sidebar-foreground: 220 13% 90%;
+    --sidebar-primary: 220 85% 55%;
+    --sidebar-primary-foreground: 220 25% 6%;
+    --sidebar-accent: 220 25% 12%;
+    --sidebar-accent-foreground: 220 13% 90%;
+    --sidebar-border: 220 25% 18%;
+    --sidebar-ring: 220 85% 55%;
+  }
+}
+
+/* Traffic Animation Utilities */
+@layer components {
+  .traffic-pulse {
+    animation: traffic-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .emergency-flash {
+    animation: emergency-flash 1s ease-in-out infinite alternate;
+  }
+  
+  .signal-glow-green {
+    box-shadow: var(--glow-green);
+  }
+  
+  .signal-glow-red {
+    box-shadow: var(--glow-red);
   }
 }
 
@@ -101,5 +150,23 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@keyframes traffic-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .7;
+  }
+}
+
+@keyframes emergency-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.3;
   }
 }

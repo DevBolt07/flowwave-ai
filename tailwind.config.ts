@@ -57,6 +57,17 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Traffic Management Colors
+        traffic: {
+          green: "hsl(var(--traffic-green))",
+          amber: "hsl(var(--traffic-amber))",
+          red: "hsl(var(--traffic-red))",
+        },
+        emergency: {
+          DEFAULT: "hsl(var(--emergency))",
+          foreground: "hsl(var(--emergency-foreground))",
+        },
+        priority: "hsl(var(--priority))",
       },
       borderRadius: {
         lg: "var(--radius)",
