@@ -4,39 +4,62 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { IntersectionCard } from "./IntersectionCard";
 import { TrafficLight } from "./TrafficLight";
-import { VideoFeedViewer } from "./VideoFeedViewer";
-import { useRealtimeData } from "@/hooks/useRealtimeData";
-import { ArrowLeft, MapPin, AlertTriangle, Clock, Car, Video } from "lucide-react";
+import { ArrowLeft, MapPin, AlertTriangle, Clock, Car } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CitizenDashboardProps {
   onBack: () => void;
 }
 
+// Mock data for intersections
+const mockIntersections = [
+  {
+    id: "int-001",
+    name: "MG Road × Brigade Road",
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 12, signal: 'green' as const, gstTime: 45 },
+      { id: 2, name: "South", vehicleCount: 8, signal: 'red' as const, gstTime: 0 },
+      { id: 3, name: "East", vehicleCount: 15, signal: 'red' as const, gstTime: 0 },
+      { id: 4, name: "West", vehicleCount: 6, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: false
+  },
+  {
+    id: "int-002", 
+    name: "Whitefield × ITPL Main",
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 24, signal: 'red' as const, gstTime: 0 },
+      { id: 2, name: "South", vehicleCount: 18, signal: 'amber' as const, gstTime: 5 },
+      { id: 3, name: "East", vehicleCount: 9, signal: 'red' as const, gstTime: 0 },
+      { id: 4, name: "West", vehicleCount: 14, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: false
+  },
+  {
+    id: "int-003",
+    name: "Koramangala × Hosur Road", 
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 31, signal: 'red' as const, gstTime: 0 },
+      { id: 2, name: "South", vehicleCount: 7, signal: 'red' as const, gstTime: 0, hasEmergency: true },
+      { id: 3, name: "East", vehicleCount: 19, signal: 'green' as const, gstTime: 28 },
+      { id: 4, name: "West", vehicleCount: 12, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: true
+  }
+];
+
 export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
-  const [showVideoFeeds, setShowVideoFeeds] = useState(false);
   
-  const { 
-    intersections, 
-    lanes, 
-    emergencies, 
-    getVideoFeedsByIntersection,
-    loading 
-  } = useRealtimeData();
-
-  const totalIntersections = intersections.length;
-  const activeEmergencies = emergencies.filter(e => e.status === 'active');
-  const emergencyActive = activeEmergencies.length > 0;
-  const totalVehicles = lanes.reduce((sum, lane) => sum + (lane.vehicle_count || 0), 0);
+  const totalIntersections = mockIntersections.length;
+  const emergencyActive = mockIntersections.some(i => i.emergencyActive);
+  const totalVehicles = mockIntersections.reduce((sum, intersection) => 
+    sum + intersection.lanes.reduce((laneSum, lane) => laneSum + lane.vehicleCount, 0), 0
+  );
 
   const selectedIntersectionData = selectedIntersection 
-    ? intersections.find(i => i.id === selectedIntersection)
+    ? mockIntersections.find(i => i.id === selectedIntersection)
     : null;
-    
-  const selectedIntersectionLanes = selectedIntersection 
-    ? lanes.filter(l => l.intersection_id === selectedIntersection)
-    : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -133,34 +156,17 @@ export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4">
-                  {intersections.map((intersection) => {
-                    const intersectionLanes = lanes.filter(l => l.intersection_id === intersection.id);
-                    const hasEmergency = activeEmergencies.some(e => 
-                      e.route && Array.isArray(e.route) && e.route.includes(intersection.id)
-                    );
-                    
-                    return (
-                      <IntersectionCard
-                        key={intersection.id}
-                        id={intersection.id}
-                        name={intersection.name}
-                        lanes={intersectionLanes.map(lane => ({
-                          id: lane.lane_no,
-                          name: lane.direction,
-                          vehicleCount: lane.vehicle_count || 0,
-                          signal: lane.signal_state as 'red' | 'amber' | 'green',
-                          gstTime: lane.gst_time || 0,
-                          hasEmergency: lane.has_emergency
-                        }))}
-                        emergencyActive={hasEmergency}
-                        onClick={() => {
-                          setSelectedIntersection(intersection.id);
-                          setShowVideoFeeds(false);
-                        }}
-                        className={selectedIntersection === intersection.id ? "ring-2 ring-primary" : ""}
-                      />
-                    );
-                  })}
+                  {mockIntersections.map((intersection) => (
+                    <IntersectionCard
+                      key={intersection.id}
+                      id={intersection.id}
+                      name={intersection.name}
+                      lanes={intersection.lanes}
+                      emergencyActive={intersection.emergencyActive}
+                      onClick={() => setSelectedIntersection(intersection.id)}
+                      className={selectedIntersection === intersection.id ? "ring-2 ring-primary" : ""}
+                    />
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -185,40 +191,24 @@ export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
                     </div>
                     
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium">Lane Status</h4>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowVideoFeeds(!showVideoFeeds)}
-                        >
-                          <Video className="w-4 h-4 mr-2" />
-                          {showVideoFeeds ? 'Hide' : 'Show'} Video Feeds
-                        </Button>
-                      </div>
-                      
-                      {selectedIntersectionLanes.map((lane) => (
+                      <h4 className="text-sm font-medium">Lane Status</h4>
+                      {selectedIntersectionData.lanes.map((lane) => (
                         <div key={lane.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
                           <div className="flex items-center space-x-2">
-                            <TrafficLight 
-                              signal={lane.signal_state as 'red' | 'amber' | 'green'} 
-                              className="scale-50" 
-                            />
-                            <span className="text-sm font-medium">{lane.direction}</span>
+                            <TrafficLight signal={lane.signal} className="scale-50" />
+                            <span className="text-sm font-medium">{lane.name}</span>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm font-medium">{lane.vehicle_count || 0} vehicles</div>
-                            {lane.signal_state === 'green' && (
-                              <div className="text-xs text-secondary">{lane.gst_time || 0}s remaining</div>
+                            <div className="text-sm font-medium">{lane.vehicleCount} vehicles</div>
+                            {lane.signal === 'green' && (
+                              <div className="text-xs text-secondary">{lane.gstTime}s remaining</div>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
                     
-                    {activeEmergencies.some(e => 
-                      e.route && Array.isArray(e.route) && e.route.includes(selectedIntersectionData.id)
-                    ) && (
+                    {selectedIntersectionData.emergencyActive && (
                       <div className="p-3 bg-emergency/10 border border-emergency/20 rounded">
                         <div className="flex items-center space-x-2 text-emergency">
                           <AlertTriangle className="w-4 h-4" />
@@ -240,19 +230,6 @@ export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
             </Card>
           </div>
         </div>
-
-        {/* Video Feeds Section */}
-        {selectedIntersectionData && showVideoFeeds && (
-          <div className="mt-6">
-            <VideoFeedViewer
-              intersectionId={selectedIntersectionData.id}
-              intersectionName={selectedIntersectionData.name}
-              lanes={selectedIntersectionLanes}
-              videoFeeds={getVideoFeedsByIntersection(selectedIntersectionData.id)}
-              isReadOnly={true}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

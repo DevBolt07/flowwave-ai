@@ -17,9 +17,48 @@ interface AuthorityDashboardProps {
   onBack: () => void;
 }
 
+const mockIntersections = [
+  {
+    id: "int-001",
+    name: "MG Road × Brigade Road",
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 12, signal: 'green' as const, gstTime: 45 },
+      { id: 2, name: "South", vehicleCount: 8, signal: 'red' as const, gstTime: 0 },
+      { id: 3, name: "East", vehicleCount: 15, signal: 'red' as const, gstTime: 0 },
+      { id: 4, name: "West", vehicleCount: 6, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: false,
+    detection: { model: 'YOLOv8', confidence: 0.92, fps: 30 }
+  },
+  {
+    id: "int-002", 
+    name: "Whitefield × ITPL Main",
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 24, signal: 'red' as const, gstTime: 0 },
+      { id: 2, name: "South", vehicleCount: 18, signal: 'amber' as const, gstTime: 5 },
+      { id: 3, name: "East", vehicleCount: 9, signal: 'red' as const, gstTime: 0 },
+      { id: 4, name: "West", vehicleCount: 14, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: false,
+    detection: { model: 'RT-DETR', confidence: 0.88, fps: 25 }
+  },
+  {
+    id: "int-003",
+    name: "Koramangala × Hosur Road", 
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 31, signal: 'red' as const, gstTime: 0 },
+      { id: 2, name: "South", vehicleCount: 7, signal: 'red' as const, gstTime: 0, hasEmergency: true },
+      { id: 3, name: "East", vehicleCount: 19, signal: 'green' as const, gstTime: 28 },
+      { id: 4, name: "West", vehicleCount: 12, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: true,
+    detection: { model: 'YOLOv8', confidence: 0.95, fps: 30 }
+  }
+];
+
 export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'video' | 'control' | 'config'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'control' | 'config' | 'video'>('overview');
   const [detectionRunning, setDetectionRunning] = useState(true);
   const [detectionModel, setDetectionModel] = useState<'yolov8' | 'rt-detr' | 'yolo-nas' | 'pp-yoloe'>('yolov8');
   const [gstConfig, setGstConfig] = useState({
@@ -33,17 +72,12 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
   const {
     intersections,
     lanes,
-    videoFeeds,
     emergencies,
     logs,
     loading,
     updateLane,
     createLog,
-    createVideoFeed,
-    updateVideoFeed,
-    deleteVideoFeed,
     getLanesByIntersection,
-    getVideoFeedsByIntersection,
     getActiveEmergencies,
   } = useRealtimeData();
   
@@ -277,9 +311,6 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                   </CardContent>
                 </Card>
               )}
-            </div>
-          </div>
-        )}
 
         {/* Video Tab */}
         {activeTab === 'video' && selectedIntersectionData && (
@@ -351,28 +382,82 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+            </div>
+          </div>
+        )}
+
+        {/* Control Tab */}
+        {activeTab === 'control' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Manual Signal Override</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Select Intersection</label>
+                  <Select value={selectedIntersection || ""} onValueChange={setSelectedIntersection}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose intersection..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockIntersections.map((intersection) => (
+                        <SelectItem key={intersection.id} value={intersection.id}>
+                          {intersection.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {selectedIntersectionData && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedIntersectionData.lanes.map((lane) => (
+                        <div key={lane.id} className="p-3 border rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">{lane.name}</span>
+                            <TrafficLight signal={lane.signal} className="scale-50" />
+                          </div>
+                          <div className="flex space-x-1">
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              className="flex-1 text-xs"
+                              onClick={() => handleManualOverride('red')}
+                            >
+                              Red
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              className="flex-1 text-xs bg-secondary hover:bg-secondary/80"
+                              onClick={() => handleManualOverride('green')}
+                            >
+                              Green
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                     
                     <div className="flex space-x-2 pt-4 border-t">
                       <Button 
                         variant="outline" 
                         className="flex-1"
-                        onClick={() => {
-                          // Reset all lanes to auto mode
-                          selectedIntersectionLanes.forEach(lane => {
-                            handleManualOverride(lane.id, 'reset');
-                          });
-                        }}
+                        onClick={() => handleManualOverride('reset')}
                       >
                         Reset to Auto
                       </Button>
                       <Button 
                         variant="destructive"
-                        onClick={() => {
-                          // Emergency stop all lanes
-                          selectedIntersectionLanes.forEach(lane => {
-                            handleManualOverride(lane.id, 'red');
-                          });
-                        }}
+                        onClick={() => handleManualOverride('red')}
                       >
                         <AlertTriangle className="w-4 h-4 mr-2" />
                         Emergency Stop
@@ -388,40 +473,38 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                 <CardTitle>Emergency Management</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {activeEmergencies.length > 0 ? (
-                  activeEmergencies.map((emergency) => (
-                    <div key={emergency.id} className="p-4 bg-emergency/10 border border-emergency/20 rounded">
-                      <div className="flex items-center space-x-2 text-emergency mb-2">
-                        <AlertTriangle className="w-5 h-5" />
-                        <span className="font-medium">Active Emergency</span>
-                      </div>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Vehicle ID:</span>
-                          <span className="font-mono">{emergency.vehicle_id || 'AMB-001'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Priority:</span>
-                          <Badge variant="destructive">Level {emergency.priority_level}</Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Status:</span>
-                          <Badge variant="destructive">{emergency.status}</Badge>
-                        </div>
-                        {emergency.eta_minutes && (
-                          <div className="flex justify-between">
-                            <span>ETA:</span>
-                            <span className="font-mono">{emergency.eta_minutes} min</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-muted-foreground py-4">
-                    No active emergencies
+                <div className="p-4 bg-emergency/10 border border-emergency/20 rounded">
+                  <div className="flex items-center space-x-2 text-emergency mb-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    <span className="font-medium">Active Emergency</span>
                   </div>
-                )}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Vehicle ID:</span>
+                      <span className="font-mono">AMB-001</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Location:</span>
+                      <span>Koramangala × Hosur Road</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Status:</span>
+                      <Badge variant="destructive">Corridor Active</Badge>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">Emergency Actions</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="outline">
+                      View Route
+                    </Button>
+                    <Button size="sm" variant="destructive">
+                      Priority Override
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -438,36 +521,19 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Min GST (seconds)</label>
-                    <Input 
-                      type="number" 
-                      value={gstConfig.min_gst}
-                      onChange={(e) => setGstConfig(prev => ({ ...prev, min_gst: Number(e.target.value) }))}
-                    />
+                    <Input type="number" defaultValue="10" />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Max GST (seconds)</label>
-                    <Input 
-                      type="number" 
-                      value={gstConfig.max_gst}
-                      onChange={(e) => setGstConfig(prev => ({ ...prev, max_gst: Number(e.target.value) }))}
-                    />
+                    <Input type="number" defaultValue="120" />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Base Time (seconds)</label>
-                    <Input 
-                      type="number" 
-                      value={gstConfig.base_time}
-                      onChange={(e) => setGstConfig(prev => ({ ...prev, base_time: Number(e.target.value) }))}
-                    />
+                    <Input type="number" defaultValue="15" />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Vehicle Factor</label>
-                    <Input 
-                      type="number" 
-                      step="0.1" 
-                      value={gstConfig.vehicle_factor}
-                      onChange={(e) => setGstConfig(prev => ({ ...prev, vehicle_factor: Number(e.target.value) }))}
-                    />
+                    <Input type="number" step="0.1" defaultValue="2.5" />
                   </div>
                 </div>
               </CardContent>
@@ -480,7 +546,7 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">AI Model Backend</label>
-                  <Select value={detectionModel} onValueChange={(value) => setDetectionModel(value as typeof detectionModel)}>
+                  <Select defaultValue="yolov8">
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -494,22 +560,21 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Detection Status</label>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant={detectionRunning ? 'destructive' : 'default'}
-                      size="sm"
-                      onClick={handleDetectionToggle}
-                    >
-                      {detectionRunning ? <Square className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                      {detectionRunning ? 'Stop Detection' : 'Start Detection'}
-                    </Button>
-                  </div>
+                  <label className="text-sm font-medium mb-2 block">Confidence Threshold</label>
+                  <Input type="number" step="0.01" min="0" max="1" defaultValue="0.5" />
                 </div>
                 
-                <div className="flex space-x-2 pt-4">
-                  <Button className="flex-1">Save Configuration</Button>
-                  <Button variant="outline">Reset to Default</Button>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Tracking Method</label>
+                  <Select defaultValue="bytetrack">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bytetrack">ByteTrack</SelectItem>
+                      <SelectItem value="deepsort">DeepSORT</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

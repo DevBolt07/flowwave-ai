@@ -1,13 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { VideoFeedViewer } from "./VideoFeedViewer";
-import { MapView } from "./MapView";
-import { useRealtimeData } from "@/hooks/useRealtimeData";
-import { useToast } from "@/hooks/use-toast";
-import { calculateRoute, startCorridor, stopCorridor } from "@/lib/api";
 import { ArrowLeft, Navigation, AlertTriangle, MapPin, Clock, Route } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,100 +14,29 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
   const [destination, setDestination] = useState("");
   const [routeActive, setRouteActive] = useState(false);
   const [corridorStatus, setCorridorStatus] = useState<'idle' | 'requesting' | 'active'>('idle');
-  const [routeData, setRouteData] = useState<any>(null);
-  const [emergencyId, setEmergencyId] = useState<string | null>(null);
   
-  const { toast } = useToast();
-  
-  const { 
-    intersections, 
-    lanes, 
-    emergencies, 
-    createEmergency, 
-    updateEmergency,
-    getVideoFeedsByIntersection
-  } = useRealtimeData();
-  
-  // Get active emergencies
-  const activeEmergencies = emergencies.filter(e => e.status === 'active');
-  
-  const handleDestinationSubmit = async () => {
+  const handleDestinationSubmit = () => {
     if (destination.trim()) {
       setCorridorStatus('requesting');
-      
-      try {
-        // Create emergency record
-        const emergency = await createEmergency({
-          vehicle_id: 'AMB-001',
-          priority_level: 1,
-          status: 'active',
-          destination_latitude: 12.9716,
-          destination_longitude: 77.5946
-        });
-        
-        setEmergencyId(emergency?.id || null);
-        
-        // Calculate route
-        const route = await calculateRoute(
-          { lat: 12.9716, lng: 77.5946 },
-          { lat: 12.9716, lng: 77.5946 }
-        );
-        
-        setRouteData(route);
-        
-        // Start corridor
-        await startCorridor({
-          emergency_id: emergency?.id || '',
-          route: route
-        });
-        
+      setTimeout(() => {
         setCorridorStatus('active');
         setRouteActive(true);
-      } catch (error) {
-        console.error('Failed to create corridor:', error);
-        setCorridorStatus('idle');
-      }
+      }, 2000);
     }
   };
 
-  const handleSkipDestination = async () => {
+  const handleSkipDestination = () => {
     setCorridorStatus('requesting');
-    
-    try {
-      const emergency = await createEmergency({
-        vehicle_id: 'AMB-001',
-        priority_level: 1,
-        status: 'active'
-      });
-      
-      setEmergencyId(emergency?.id || null);
+    setTimeout(() => {
       setCorridorStatus('active');
-    } catch (error) {
-      console.error('Failed to create emergency:', error);
-      setCorridorStatus('idle');
-    }
+    }, 1500);
   };
 
-  const handleEndCorridor = async () => {
-    if (emergencyId) {
-      try {
-        await stopCorridor(emergencyId);
-        await updateEmergency(emergencyId, { status: 'completed' });
-      } catch (error) {
-        console.error('Failed to end corridor:', error);
-      }
-    }
-    
+  const handleEndCorridor = () => {
     setCorridorStatus('idle');
     setRouteActive(false);
     setDestination("");
-    setRouteData(null);
-    setEmergencyId(null);
   };
-
-  // Get route intersections for video feeds
-  const routeIntersections = routeData?.intersections ? 
-    intersections.filter(i => routeData.intersections.includes(i.id)) : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -291,110 +215,30 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
           </div>
         </div>
 
-        {/* Live Map and Route Display */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5" />
-                <span>Emergency Route Map</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {corridorStatus === 'active' && routeData ? (
-                <MapView
-                  intersections={intersections.filter(i => i.latitude && i.longitude).map(i => ({
-                    id: i.id,
-                    name: i.name,
-                    latitude: i.latitude!,
-                    longitude: i.longitude!,
-                    hasEmergency: activeEmergencies.some(e => 
-                      e.route && Array.isArray(e.route) && e.route.includes(i.id)
-                    )
-                  }))}
-                  emergencyRoutes={activeEmergencies.filter(e => e.id === emergencyId).map(e => ({
-                    id: e.id,
-                    coordinates: routeData?.route?.map(r => [r.lat, r.lng] as [number, number]) || [],
-                    ambulancePosition: [e.source_latitude || 12.9716, e.source_longitude || 77.5946] as [number, number],
-                    eta: e.eta_minutes || 5,
-                    status: e.status as 'active' | 'completed'
-                  }))}
-                  onIntersectionClick={() => {}}
-                />
-              ) : (
-                <div className="h-64 bg-muted/30 rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
-                  <div className="text-center">
-                    <Route className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-                    <p className="text-sm text-muted-foreground">
-                      {corridorStatus === 'active' 
-                        ? 'Priority intersection with active green signal'
-                        : 'Map will display when emergency corridor is activated'
-                      }
-                    </p>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Route Intersections</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {routeIntersections.length > 0 ? (
-                <div className="space-y-3">
-                  {routeIntersections.slice(0, 3).map((intersection) => {
-                    const intersectionLanes = lanes.filter(l => l.intersection_id === intersection.id);
-                    const hasGreenSignal = intersectionLanes.some(l => l.signal_state === 'green');
-                    
-                    return (
-                      <div key={intersection.id} className="p-3 bg-muted/50 rounded">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{intersection.name}</span>
-                          <Badge variant={hasGreenSignal ? 'secondary' : 'outline'}>
-                            {hasGreenSignal ? 'GREEN' : 'QUEUED'}
-                          </Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {intersectionLanes.reduce((sum, l) => sum + (l.vehicle_count || 0), 0)} vehicles
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No route intersections available</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Route Video Feeds */}
-        {corridorStatus === 'active' && routeIntersections.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-lg font-medium mb-4">Live Feeds Along Route</h3>
-            <div className="space-y-6">
-              {routeIntersections.slice(0, 2).map((intersection) => {
-                const intersectionLanes = lanes.filter(l => l.intersection_id === intersection.id);
-                
-                return (
-                  <VideoFeedViewer
-                    key={intersection.id}
-                    intersectionId={intersection.id}
-                    intersectionName={intersection.name}
-                    lanes={intersectionLanes}
-                    videoFeeds={getVideoFeedsByIntersection(intersection.id)}
-                    isReadOnly={true}
-                  />
-                );
-              })}
+        {/* Live Map Simulation */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <MapPin className="w-5 h-5" />
+              <span>Live Traffic Map</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 bg-muted/30 rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
+              <div className="text-center">
+                <Route className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">
+                  {corridorStatus === 'active' 
+                    ? routeActive 
+                      ? `Interactive map showing route to ${destination} with green corridor`
+                      : 'Map showing priority intersection with active green signal'
+                    : 'Map will display when emergency corridor is activated'
+                  }
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
