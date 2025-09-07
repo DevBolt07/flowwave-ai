@@ -29,7 +29,8 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
     lanes, 
     emergencies, 
     createEmergency, 
-    updateEmergency 
+    updateEmergency,
+    getVideoFeedsByIntersection
   } = useRealtimeData();
   
   // Get active emergencies
@@ -386,6 +387,7 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
                     intersectionId={intersection.id}
                     intersectionName={intersection.name}
                     lanes={intersectionLanes}
+                    videoFeeds={getVideoFeedsByIntersection(intersection.id)}
                     isReadOnly={true}
                   />
                 );

@@ -33,12 +33,17 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
   const {
     intersections,
     lanes,
+    videoFeeds,
     emergencies,
     logs,
     loading,
     updateLane,
     createLog,
+    createVideoFeed,
+    updateVideoFeed,
+    deleteVideoFeed,
     getLanesByIntersection,
+    getVideoFeedsByIntersection,
     getActiveEmergencies,
   } = useRealtimeData();
   

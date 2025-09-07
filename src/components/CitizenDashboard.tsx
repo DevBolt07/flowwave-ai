@@ -21,6 +21,7 @@ export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
     intersections, 
     lanes, 
     emergencies, 
+    getVideoFeedsByIntersection,
     loading 
   } = useRealtimeData();
 
@@ -247,6 +248,7 @@ export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
               intersectionId={selectedIntersectionData.id}
               intersectionName={selectedIntersectionData.name}
               lanes={selectedIntersectionLanes}
+              videoFeeds={getVideoFeedsByIntersection(selectedIntersectionData.id)}
               isReadOnly={true}
             />
           </div>

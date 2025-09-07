@@ -10,17 +10,21 @@ import { useToast } from '@/hooks/use-toast';
 interface VideoFeedProps {
   intersectionId: string;
   direction: 'North' | 'South' | 'East' | 'West';
-  onDetectionUpdate: (result: DetectionResult) => void;
-  detectionModel: 'yolov8' | 'rt-detr' | 'yolo-nas' | 'pp-yoloe';
-  isActive: boolean;
+  feedUrl?: string;
+  onDetectionUpdate?: (result: DetectionResult) => void;
+  detectionModel?: 'yolov8' | 'rt-detr' | 'yolo-nas' | 'pp-yoloe';
+  isActive?: boolean;
+  autoPlay?: boolean;
 }
 
 export const VideoFeed = ({
   intersectionId,
   direction,
+  feedUrl,
   onDetectionUpdate,
-  detectionModel,
-  isActive,
+  detectionModel = 'yolov8',
+  isActive = false,
+  autoPlay = false,
 }: VideoFeedProps) => {
   const [feedType, setFeedType] = useState<'none' | 'webcam' | 'upload'>('none');
   const [isRecording, setIsRecording] = useState(false);

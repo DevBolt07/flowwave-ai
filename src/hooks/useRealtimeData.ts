@@ -9,9 +9,20 @@ export interface Lane {
   lane_no: number;
   direction: string;
   vehicle_count: number;
+  current_count: number;
   gst_time: number;
   signal_state: 'red' | 'green' | 'amber';
   has_emergency: boolean;
+  updated_at: string;
+}
+
+export interface VideoFeed {
+  id: string;
+  intersection_id: string;
+  lane_no: number;
+  feed_url: string;
+  is_active: boolean;
+  created_at: string;
   updated_at: string;
 }
 
@@ -52,6 +63,7 @@ export interface Intersection {
 export const useRealtimeData = () => {
   const [intersections, setIntersections] = useState<Intersection[]>([]);
   const [lanes, setLanes] = useState<Lane[]>([]);
+  const [videoFeeds, setVideoFeeds] = useState<VideoFeed[]>([]);
   const [emergencies, setEmergencies] = useState<Emergency[]>([]);
   const [logs, setLogs] = useState<TrafficLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +94,16 @@ export const useRealtimeData = () => {
 
       if (lanesError) throw lanesError;
       setLanes(lanesData || []);
+
+      // Load video feeds
+      const { data: videoFeedsData, error: videoFeedsError } = await supabase
+        .from('video_feeds')
+        .select('*')
+        .eq('is_active', true)
+        .order('intersection_id, lane_no');
+
+      if (videoFeedsError) throw videoFeedsError;
+      setVideoFeeds(videoFeedsData || []);
 
       // Load active emergencies
       const { data: emergenciesData, error: emergenciesError } = await supabase
@@ -156,6 +178,32 @@ export const useRealtimeData = () => {
       )
       .subscribe();
 
+    // Subscribe to video feeds changes
+    const videoFeedsChannel = supabase
+      .channel('video-feeds-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'video_feeds'
+        },
+        (payload) => {
+          console.log('Video feeds update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setVideoFeeds(prev => [...prev, payload.new as VideoFeed]);
+          } else if (payload.eventType === 'UPDATE') {
+            setVideoFeeds(prev => prev.map(feed => 
+              feed.id === payload.new.id ? payload.new as VideoFeed : feed
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setVideoFeeds(prev => prev.filter(feed => feed.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
     // Subscribe to emergencies changes
     const emergenciesChannel = supabase
       .channel('emergencies-changes')
@@ -206,6 +254,7 @@ export const useRealtimeData = () => {
 
     return () => {
       supabase.removeChannel(lanesChannel);
+      supabase.removeChannel(videoFeedsChannel);
       supabase.removeChannel(emergenciesChannel);
       supabase.removeChannel(logsChannel);
     };
@@ -317,10 +366,73 @@ export const useRealtimeData = () => {
     return emergencies.filter(emergency => emergency.status === 'active');
   }, [emergencies]);
 
+  // Video feed management functions
+  const createVideoFeed = useCallback(async (intersectionId: string, laneNo: number, feedUrl: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('video_feeds')
+        .insert([{ intersection_id: intersectionId, lane_no: laneNo, feed_url: feedUrl }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Error creating video feed:', err);
+      toast({
+        title: "Feed Error",
+        description: "Failed to create video feed",
+        variant: "destructive",
+      });
+      return null;
+    }
+  }, [toast]);
+
+  const updateVideoFeed = useCallback(async (feedId: string, updates: Partial<VideoFeed>) => {
+    try {
+      const { error } = await supabase
+        .from('video_feeds')
+        .update(updates)
+        .eq('id', feedId);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error updating video feed:', err);
+      toast({
+        title: "Update Error",
+        description: "Failed to update video feed",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const deleteVideoFeed = useCallback(async (feedId: string) => {
+    try {
+      const { error } = await supabase
+        .from('video_feeds')
+        .delete()
+        .eq('id', feedId);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error deleting video feed:', err);
+      toast({
+        title: "Delete Error",
+        description: "Failed to delete video feed",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const getVideoFeedsByIntersection = useCallback((intersectionId: string) => {
+    return videoFeeds.filter(feed => feed.intersection_id === intersectionId && feed.is_active);
+  }, [videoFeeds]);
+
   return {
     // Data
     intersections,
     lanes,
+    videoFeeds,
     emergencies,
     logs,
     loading,
@@ -331,9 +443,13 @@ export const useRealtimeData = () => {
     createEmergency,
     updateEmergency,
     createLog,
+    createVideoFeed,
+    updateVideoFeed,
+    deleteVideoFeed,
     
     // Utilities
     getLanesByIntersection,
+    getVideoFeedsByIntersection,
     getActiveEmergencies,
     refetch: loadInitialData,
   };
