@@ -14,7 +14,206 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      emergencies: {
+        Row: {
+          created_at: string
+          destination_latitude: number | null
+          destination_longitude: number | null
+          driver_id: string | null
+          eta_minutes: number | null
+          id: string
+          priority_level: number | null
+          route: Json | null
+          source_latitude: number | null
+          source_longitude: number | null
+          status: Database["public"]["Enums"]["emergency_status"] | null
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          destination_latitude?: number | null
+          destination_longitude?: number | null
+          driver_id?: string | null
+          eta_minutes?: number | null
+          id?: string
+          priority_level?: number | null
+          route?: Json | null
+          source_latitude?: number | null
+          source_longitude?: number | null
+          status?: Database["public"]["Enums"]["emergency_status"] | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          destination_latitude?: number | null
+          destination_longitude?: number | null
+          driver_id?: string | null
+          eta_minutes?: number | null
+          id?: string
+          priority_level?: number | null
+          route?: Json | null
+          source_latitude?: number | null
+          source_longitude?: number | null
+          status?: Database["public"]["Enums"]["emergency_status"] | null
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: []
+      }
+      intersections: {
+        Row: {
+          config: Json | null
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string
+          roi_polygons: Json | null
+          updated_at: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          roi_polygons?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          roi_polygons?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lanes: {
+        Row: {
+          created_at: string
+          direction: string
+          gst_time: number | null
+          has_emergency: boolean | null
+          id: string
+          intersection_id: string
+          lane_no: number
+          signal_state: Database["public"]["Enums"]["signal_state"] | null
+          updated_at: string
+          vehicle_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          direction: string
+          gst_time?: number | null
+          has_emergency?: boolean | null
+          id?: string
+          intersection_id: string
+          lane_no: number
+          signal_state?: Database["public"]["Enums"]["signal_state"] | null
+          updated_at?: string
+          vehicle_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          direction?: string
+          gst_time?: number | null
+          has_emergency?: boolean | null
+          id?: string
+          intersection_id?: string
+          lane_no?: number
+          signal_state?: Database["public"]["Enums"]["signal_state"] | null
+          updated_at?: string
+          vehicle_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lanes_intersection_id_fkey"
+            columns: ["intersection_id"]
+            isOneToOne: false
+            referencedRelation: "intersections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      logs: {
+        Row: {
+          created_at: string
+          emergency_id: string | null
+          event_type: string
+          id: string
+          intersection_id: string | null
+          message: string
+          metadata: Json | null
+        }
+        Insert: {
+          created_at?: string
+          emergency_id?: string | null
+          event_type: string
+          id?: string
+          intersection_id?: string | null
+          message: string
+          metadata?: Json | null
+        }
+        Update: {
+          created_at?: string
+          emergency_id?: string | null
+          event_type?: string
+          id?: string
+          intersection_id?: string | null
+          message?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logs_emergency_id_fkey"
+            columns: ["emergency_id"]
+            isOneToOne: false
+            referencedRelation: "emergencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logs_intersection_id_fkey"
+            columns: ["intersection_id"]
+            isOneToOne: false
+            referencedRelation: "intersections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +222,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      emergency_status: "active" | "completed" | "cancelled"
+      signal_state: "red" | "green" | "amber"
+      user_role: "normal" | "authority" | "emergency"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +351,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      emergency_status: ["active", "completed", "cancelled"],
+      signal_state: ["red", "green", "amber"],
+      user_role: ["normal", "authority", "emergency"],
+    },
   },
 } as const
