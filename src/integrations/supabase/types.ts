@@ -98,6 +98,7 @@ export type Database = {
       lanes: {
         Row: {
           created_at: string
+          current_count: number | null
           direction: string
           gst_time: number | null
           has_emergency: boolean | null
@@ -110,6 +111,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          current_count?: number | null
           direction: string
           gst_time?: number | null
           has_emergency?: boolean | null
@@ -122,6 +124,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          current_count?: number | null
           direction?: string
           gst_time?: number | null
           has_emergency?: boolean | null
@@ -213,6 +216,44 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      video_feeds: {
+        Row: {
+          created_at: string
+          feed_url: string
+          id: string
+          intersection_id: string
+          is_active: boolean | null
+          lane_no: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          feed_url: string
+          id?: string
+          intersection_id: string
+          is_active?: boolean | null
+          lane_no: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          feed_url?: string
+          id?: string
+          intersection_id?: string
+          is_active?: boolean | null
+          lane_no?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_feeds_intersection_id_fkey"
+            columns: ["intersection_id"]
+            isOneToOne: false
+            referencedRelation: "intersections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
