@@ -231,8 +231,16 @@ export const VideoFeed = ({
                 ref={videoRef}
                 autoPlay
                 muted
+                loop
                 playsInline
                 className="w-full h-full object-cover"
+                onLoadedData={() => {
+                  // Auto-play and loop uploaded videos
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = 0;
+                    videoRef.current.play();
+                  }
+                }}
               />
               {renderBoundingBoxes()}
               <canvas ref={canvasRef} className="hidden" />

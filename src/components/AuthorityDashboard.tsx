@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { IntersectionCard } from "./IntersectionCard";
 import { TrafficLight } from "./TrafficLight";
 import { VideoFeed } from "./VideoFeed";
-import { ArrowLeft, Shield, Settings, Play, Square, AlertTriangle, Eye, Car, Zap } from "lucide-react";
+import { VideoFeedUploader } from "./VideoFeedUploader";
+import { ArrowLeft, Shield, Settings, Play, Square, AlertTriangle, Eye, Car, Zap, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeData } from "@/hooks/useRealtimeData";
@@ -16,45 +17,6 @@ import { DetectionResult, calculateGST } from "@/lib/api";
 interface AuthorityDashboardProps {
   onBack: () => void;
 }
-
-const mockIntersections = [
-  {
-    id: "int-001",
-    name: "MG Road × Brigade Road",
-    lanes: [
-      { id: 1, name: "North", vehicleCount: 12, signal: 'green' as const, gstTime: 45 },
-      { id: 2, name: "South", vehicleCount: 8, signal: 'red' as const, gstTime: 0 },
-      { id: 3, name: "East", vehicleCount: 15, signal: 'red' as const, gstTime: 0 },
-      { id: 4, name: "West", vehicleCount: 6, signal: 'red' as const, gstTime: 0 }
-    ],
-    emergencyActive: false,
-    detection: { model: 'YOLOv8', confidence: 0.92, fps: 30 }
-  },
-  {
-    id: "int-002", 
-    name: "Whitefield × ITPL Main",
-    lanes: [
-      { id: 1, name: "North", vehicleCount: 24, signal: 'red' as const, gstTime: 0 },
-      { id: 2, name: "South", vehicleCount: 18, signal: 'amber' as const, gstTime: 5 },
-      { id: 3, name: "East", vehicleCount: 9, signal: 'red' as const, gstTime: 0 },
-      { id: 4, name: "West", vehicleCount: 14, signal: 'red' as const, gstTime: 0 }
-    ],
-    emergencyActive: false,
-    detection: { model: 'RT-DETR', confidence: 0.88, fps: 25 }
-  },
-  {
-    id: "int-003",
-    name: "Koramangala × Hosur Road", 
-    lanes: [
-      { id: 1, name: "North", vehicleCount: 31, signal: 'red' as const, gstTime: 0 },
-      { id: 2, name: "South", vehicleCount: 7, signal: 'red' as const, gstTime: 0, hasEmergency: true },
-      { id: 3, name: "East", vehicleCount: 19, signal: 'green' as const, gstTime: 28 },
-      { id: 4, name: "West", vehicleCount: 12, signal: 'red' as const, gstTime: 0 }
-    ],
-    emergencyActive: true,
-    detection: { model: 'YOLOv8', confidence: 0.95, fps: 30 }
-  }
-];
 
 export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
@@ -88,7 +50,7 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
   const selectedIntersectionLanes = selectedIntersection 
     ? getLanesByIntersection(selectedIntersection)
     : [];
-    
+     
   const activeEmergencies = getActiveEmergencies();
 
   const handleManualOverride = async (laneId: string, action: 'green' | 'red' | 'reset') => {
@@ -264,7 +226,7 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                       <div className="text-xs text-muted-foreground">Active Intersections</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-secondary">{lanes.reduce((sum, lane) => sum + lane.vehicle_count, 0)}</div>
+                      <div className="text-2xl font-bold text-secondary">{lanes.reduce((sum, lane) => sum + (lane.vehicle_count || 0), 0)}</div>
                       <div className="text-xs text-muted-foreground">Vehicles Detected</div>
                     </div>
                     <div className="text-center">
@@ -311,20 +273,69 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                   </CardContent>
                 </Card>
               )}
+            </div>
+          </div>
+        )}
 
         {/* Video Tab */}
-        {activeTab === 'video' && selectedIntersectionData && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {selectedIntersectionLanes.map((lane) => (
-              <VideoFeed
-                key={lane.id}
-                intersectionId={selectedIntersection!}
-                direction={lane.direction as any}
-                onDetectionUpdate={(result) => handleDetectionUpdate(selectedIntersection!, result)}
-                detectionModel={detectionModel}
-                isActive={detectionRunning}
-              />
-            ))}
+        {activeTab === 'video' && (
+          <div className="space-y-6">
+            {/* Intersection Selection */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Video Feed Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4">
+                  <label className="text-sm font-medium mb-2 block">Select Intersection</label>
+                  <Select value={selectedIntersection || ""} onValueChange={setSelectedIntersection}>
+                    <SelectTrigger className="max-w-md">
+                      <SelectValue placeholder="Choose intersection..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {intersections.map((intersection) => (
+                        <SelectItem key={intersection.id} value={intersection.id}>
+                          {intersection.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Video Upload Section */}
+            {selectedIntersection && (
+              <>
+                <VideoFeedUploader 
+                  intersectionId={selectedIntersection}
+                  onUploadComplete={() => {
+                    // Refresh data if needed
+                  }}
+                />
+                
+                {/* Live Video Feeds */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Live Video Analysis - {selectedIntersectionData?.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {selectedIntersectionLanes.map((lane) => (
+                        <VideoFeed
+                          key={lane.id}
+                          intersectionId={selectedIntersection}
+                          direction={lane.direction as any}
+                          onDetectionUpdate={(result) => handleDetectionUpdate(selectedIntersection, result)}
+                          detectionModel={detectionModel}
+                          isActive={detectionRunning}
+                        />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         )}
 
@@ -361,6 +372,9 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                             <span className="text-sm font-medium">{lane.direction}</span>
                             <TrafficLight signal={lane.signal_state} className="scale-50" />
                           </div>
+                          <div className="text-xs text-muted-foreground mb-2">
+                            Vehicles: {lane.vehicle_count || 0} | GST: {lane.gst_time || 0}s
+                          </div>
                           <div className="flex space-x-1">
                             <Button 
                               size="sm" 
@@ -386,124 +400,35 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                 )}
               </CardContent>
             </Card>
-          </div>
-        )}
-            </div>
-          </div>
-        )}
 
-        {/* Control Tab */}
-        {activeTab === 'control' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Emergency Override */}
             <Card>
               <CardHeader>
-                <CardTitle>Manual Signal Override</CardTitle>
+                <CardTitle>Emergency Override</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Select Intersection</label>
-                  <Select value={selectedIntersection || ""} onValueChange={setSelectedIntersection}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose intersection..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockIntersections.map((intersection) => (
-                        <SelectItem key={intersection.id} value={intersection.id}>
-                          {intersection.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {selectedIntersectionData && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedIntersectionData.lanes.map((lane) => (
-                        <div key={lane.id} className="p-3 border rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium">{lane.name}</span>
-                            <TrafficLight signal={lane.signal} className="scale-50" />
+                <div className="space-y-3">
+                  {activeEmergencies.length > 0 ? (
+                    activeEmergencies.map((emergency) => (
+                      <div key={emergency.id} className="p-3 bg-emergency/10 border border-emergency/20 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-sm">Emergency Vehicle</div>
+                            <div className="text-xs text-muted-foreground">Vehicle ID: {emergency.vehicle_id}</div>
                           </div>
-                          <div className="flex space-x-1">
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              className="flex-1 text-xs"
-                              onClick={() => handleManualOverride('red')}
-                            >
-                              Red
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="default"
-                              className="flex-1 text-xs bg-secondary hover:bg-secondary/80"
-                              onClick={() => handleManualOverride('green')}
-                            >
-                              Green
-                            </Button>
-                          </div>
+                          <Badge variant="destructive">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            Priority {emergency.priority_level}
+                          </Badge>
                         </div>
-                      ))}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No active emergencies</p>
                     </div>
-                    
-                    <div className="flex space-x-2 pt-4 border-t">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => handleManualOverride('reset')}
-                      >
-                        Reset to Auto
-                      </Button>
-                      <Button 
-                        variant="destructive"
-                        onClick={() => handleManualOverride('red')}
-                      >
-                        <AlertTriangle className="w-4 h-4 mr-2" />
-                        Emergency Stop
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Emergency Management</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-emergency/10 border border-emergency/20 rounded">
-                  <div className="flex items-center space-x-2 text-emergency mb-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    <span className="font-medium">Active Emergency</span>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Vehicle ID:</span>
-                      <span className="font-mono">AMB-001</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Location:</span>
-                      <span>Koramangala × Hosur Road</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Status:</span>
-                      <Badge variant="destructive">Corridor Active</Badge>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Emergency Actions</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button size="sm" variant="outline">
-                      View Route
-                    </Button>
-                    <Button size="sm" variant="destructive">
-                      Priority Override
-                    </Button>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -515,66 +440,98 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>GST Configuration</CardTitle>
+                <CardTitle>Detection Configuration</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Detection Model</label>
+                  <Select value={detectionModel} onValueChange={(value: any) => setDetectionModel(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yolov8">YOLOv8 (Recommended)</SelectItem>
+                      <SelectItem value="rt-detr">RT-DETR</SelectItem>
+                      <SelectItem value="yolo-nas">YOLO-NAS</SelectItem>
+                      <SelectItem value="pp-yoloe">PP-YOLOE+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Min GST (seconds)</label>
-                    <Input type="number" defaultValue="10" />
+                    <Input
+                      type="number"
+                      value={gstConfig.min_gst}
+                      onChange={(e) => setGstConfig(prev => ({ ...prev, min_gst: parseInt(e.target.value) }))}
+                      min="5"
+                      max="60"
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Max GST (seconds)</label>
-                    <Input type="number" defaultValue="120" />
+                    <Input
+                      type="number"
+                      value={gstConfig.max_gst}
+                      onChange={(e) => setGstConfig(prev => ({ ...prev, max_gst: parseInt(e.target.value) }))}
+                      min="60"
+                      max="300"
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Base Time (seconds)</label>
-                    <Input type="number" defaultValue="15" />
+                    <Input
+                      type="number"
+                      value={gstConfig.base_time}
+                      onChange={(e) => setGstConfig(prev => ({ ...prev, base_time: parseInt(e.target.value) }))}
+                      min="10"
+                      max="60"
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">Vehicle Factor</label>
-                    <Input type="number" step="0.1" defaultValue="2.5" />
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={gstConfig.vehicle_factor}
+                      onChange={(e) => setGstConfig(prev => ({ ...prev, vehicle_factor: parseFloat(e.target.value) }))}
+                      min="1.0"
+                      max="5.0"
+                    />
                   </div>
                 </div>
+
+                <Button className="w-full">
+                  Save Configuration
+                </Button>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Detection Settings</CardTitle>
+                <CardTitle>System Status</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">AI Model Backend</label>
-                  <Select defaultValue="yolov8">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yolov8">YOLOv8</SelectItem>
-                      <SelectItem value="rt-detr">RT-DETR</SelectItem>
-                      <SelectItem value="yolo-nas">YOLO-NAS</SelectItem>
-                      <SelectItem value="pp-yoloe">PP-YOLOE</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Confidence Threshold</label>
-                  <Input type="number" step="0.01" min="0" max="1" defaultValue="0.5" />
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Tracking Method</label>
-                  <Select defaultValue="bytetrack">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bytetrack">ByteTrack</SelectItem>
-                      <SelectItem value="deepsort">DeepSORT</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-lg font-bold text-primary">Active</div>
+                      <div className="text-xs text-muted-foreground">AI Detection</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-lg font-bold text-secondary">Live</div>
+                      <div className="text-xs text-muted-foreground">Video Feeds</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-lg font-bold text-accent">30 FPS</div>
+                      <div className="text-xs text-muted-foreground">Processing Rate</div>
+                    </div>
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-lg font-bold text-emergency">~45ms</div>
+                      <div className="text-xs text-muted-foreground">Latency</div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
