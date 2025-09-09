@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { RoleSelector } from "@/components/RoleSelector";
 import { CitizenDashboard } from "@/components/CitizenDashboard";
 import { AuthorityDashboard } from "@/components/AuthorityDashboard";
@@ -7,7 +9,13 @@ import { EmergencyDashboard } from "@/components/EmergencyDashboard";
 type UserRole = 'normal' | 'authority' | 'emergency' | null;
 
 const Index = () => {
+  const { user, profile } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
+
+  // Redirect to auth if not logged in
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
 
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role);
