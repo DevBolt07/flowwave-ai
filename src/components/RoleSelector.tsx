@@ -1,7 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Ambulance, MapPin } from "lucide-react";
+import { Shield, Users, Ambulance, MapPin, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Role {
   id: 'normal' | 'authority' | 'emergency';
@@ -17,6 +18,15 @@ interface RoleSelectorProps {
 }
 
 export const RoleSelector = ({ onRoleSelect }: RoleSelectorProps) => {
+  const { profile, signOut } = useAuth();
+  
+  const handleSignOut = async () => {
+    await signOut();
+  };
+  
+  if (!profile) {
+    return <div>Loading profile...</div>;
+  }
   const roles: Role[] = [
     {
       id: 'normal',
@@ -64,20 +74,31 @@ export const RoleSelector = ({ onRoleSelect }: RoleSelectorProps) => {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
-            Smart Traffic Management System
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            AI-powered traffic optimization with emergency vehicle priority and real-time density monitoring
-          </p>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex-1"></div>
+            <div className="flex-1 text-center">
+              <h1 className="text-4xl font-bold text-foreground mb-4">
+                Welcome, {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)} User
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                AI-powered traffic optimization with emergency vehicle priority and real-time density monitoring
+              </p>
+            </div>
+            <div className="flex-1 flex justify-end">
+              <Button variant="outline" onClick={handleSignOut} className="flex items-center space-x-2">
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </Button>
+            </div>
+          </div>
           <div className="flex items-center justify-center space-x-2 mt-4">
             <MapPin className="w-5 h-5 text-primary" />
             <span className="text-sm text-muted-foreground">Smart City Initiative</span>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          {roles.map((role) => (
+        <div className="grid md:grid-cols-1 gap-8 max-w-md mx-auto">
+          {roles.filter(role => role.id === profile.role).map((role) => (
             <Card key={role.id} className="relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-105">
               <div className={cn("absolute top-0 left-0 right-0 h-1", role.color)} />
               
@@ -102,9 +123,9 @@ export const RoleSelector = ({ onRoleSelect }: RoleSelectorProps) => {
                 <Button 
                   onClick={() => onRoleSelect(role.id)}
                   className="w-full"
-                  variant={role.id === 'emergency' ? 'destructive' : 'default'}
+                  size="lg"
                 >
-                  Access {role.title}
+                  Access Dashboard
                 </Button>
               </CardContent>
             </Card>

@@ -25,13 +25,29 @@ const Index = () => {
     setSelectedRole(null);
   };
 
-  // Role Selection Screen
+  // Show loading if profile not loaded yet
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Role Selection Screen (only show if no role selected)
   if (!selectedRole) {
     return <RoleSelector onRoleSelect={handleRoleSelect} />;
   }
 
   // Render appropriate dashboard based on selected role
-  switch (selectedRole) {
+  // But ensure user can only access their own role
+  const userRole = profile.role as UserRole;
+  const roleToShow = selectedRole === userRole ? selectedRole : userRole;
+
+  switch (roleToShow) {
     case 'normal':
       return <CitizenDashboard onBack={handleBackToRoleSelector} />;
     case 'authority':
