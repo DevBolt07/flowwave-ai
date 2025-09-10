@@ -5,12 +5,15 @@ import { RoleSelector } from "@/components/RoleSelector";
 import { CitizenDashboard } from "@/components/CitizenDashboard";
 import { AuthorityDashboard } from "@/components/AuthorityDashboard";
 import { EmergencyDashboard } from "@/components/EmergencyDashboard";
+import { TrafficDetectionDemo } from "@/components/TrafficDetectionDemo";
+import { Button } from "@/components/ui/button";
 
 type UserRole = 'normal' | 'authority' | 'emergency' | null;
 
 const Index = () => {
   const { user, profile } = useAuth();
   const [selectedRole, setSelectedRole] = useState<UserRole>(null);
+  const [showDemo, setShowDemo] = useState(false);
 
   // Redirect to auth if not logged in
   if (!user) {
@@ -37,9 +40,39 @@ const Index = () => {
     );
   }
 
+  // Show demo if requested
+  if (showDemo) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="p-4 border-b bg-card">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowDemo(false)}
+          >
+            ← Back to Role Selection
+          </Button>
+        </div>
+        <TrafficDetectionDemo />
+      </div>
+    );
+  }
+
   // Role Selection Screen (only show if no role selected)
   if (!selectedRole) {
-    return <RoleSelector onRoleSelect={handleRoleSelect} />;
+    return (
+      <div>
+        <div className="p-4 text-center border-b bg-card">
+          <Button 
+            variant="secondary" 
+            onClick={() => setShowDemo(true)}
+            className="mb-4"
+          >
+            🚦 Launch Traffic Detection Demo
+          </Button>
+        </div>
+        <RoleSelector onRoleSelect={handleRoleSelect} />
+      </div>
+    );
   }
 
   // Render appropriate dashboard based on selected role
