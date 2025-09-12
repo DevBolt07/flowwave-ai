@@ -45,18 +45,17 @@ export const VideoFeedManager = ({
   
   const { toast } = useToast();
 
-  // Load video feeds
   useEffect(() => {
     loadVideoFeeds();
   }, [intersectionId]);
 
   const loadVideoFeeds = async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('video_feeds')
         .select('*')
-        .eq('intersection_id', intersectionId)
-        .eq('is_active', true);
+        .eq('intersection_id', intersectionId);
 
       if (error) throw error;
       
@@ -114,7 +113,6 @@ export const VideoFeedManager = ({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -140,7 +138,6 @@ export const VideoFeedManager = ({
         </CardHeader>
       </Card>
 
-      {/* Upload Section */}
       {showUploader && (
         <VideoFeedUploader 
           intersectionId={intersectionId}
@@ -148,21 +145,19 @@ export const VideoFeedManager = ({
         />
       )}
 
-      {/* Video Feeds Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {lanes.map((lane) => {
           const feed = getFeedForLane(lane.lane_no);
           
           return (
             <div key={lane.id} className="space-y-3">
-              {/* Lane Header */}
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-medium">Lane {lane.lane_no} - {lane.direction}</h3>
                   <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                     <span>Vehicles: {lane.vehicle_count || 0}</span>
                     <Badge variant={
-                      lane.signal_state === 'green' ? 'default' : 
+                      lane.signal_state === 'green' ? 'default' :
                       lane.signal_state === 'amber' ? 'secondary' : 'destructive'
                     } className="text-xs">
                       {lane.signal_state?.toUpperCase() || 'OFF'}
@@ -180,9 +175,9 @@ export const VideoFeedManager = ({
                 )}
               </div>
 
-              {/* Video Feed */}
               {feed && feed.is_active ? (
                 <VideoFeed
+                  feedUrl={feed.feed_url}
                   intersectionId={intersectionId}
                   direction={lane.direction as any}
                   onDetectionUpdate={(result) => {
@@ -200,7 +195,7 @@ export const VideoFeedManager = ({
                         {feed ? 'Feed Inactive' : 'No Video Feed'}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {feed ? 'Click play to activate' : 'Upload video to enable detection'}
+                        {feed ? 'Click play to activate' : 'Configure a video feed to enable detection'}
                       </p>
                     </div>
                   </CardContent>
@@ -210,33 +205,6 @@ export const VideoFeedManager = ({
           );
         })}
       </div>
-
-      {/* Feed Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Feed Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-lg font-bold text-primary">{videoFeeds.length}</div>
-              <div className="text-xs text-muted-foreground">Total Feeds</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-secondary">{videoFeeds.filter(f => f.is_active).length}</div>
-              <div className="text-xs text-muted-foreground">Active Feeds</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-accent">{lanes.reduce((sum, lane) => sum + (lane.vehicle_count || 0), 0)}</div>
-              <div className="text-xs text-muted-foreground">Total Vehicles</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-emergency">{detectionModel.toUpperCase()}</div>
-              <div className="text-xs text-muted-foreground">AI Model</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

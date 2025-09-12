@@ -1,199 +1,143 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import ReactPlayer from 'react-player';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Camera, Upload, Square, Play, AlertTriangle } from 'lucide-react';
-import { detectVehicles, DetectionResult, mockDetectionResult } from '@/lib/api';
+import { AlertTriangle, Loader } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface DetectionResult {
+    bounding_boxes: any[];
+    vehicle_count: number;
+}
+
 interface VideoFeedProps {
+  feedUrl: string;
   intersectionId: string;
   direction: 'North' | 'South' | 'East' | 'West';
-  onDetectionUpdate: (result: DetectionResult) => void;
-  detectionModel: 'yolov8' | 'rt-detr' | 'yolo-nas' | 'pp-yoloe';
+  onDetectionUpdate: (result: any) => void;
+  detectionModel: string;
   isActive: boolean;
 }
 
 export const VideoFeed = ({
+  feedUrl,
   intersectionId,
   direction,
   onDetectionUpdate,
   detectionModel,
   isActive,
 }: VideoFeedProps) => {
-  const [feedType, setFeedType] = useState<'none' | 'webcam' | 'upload'>('none');
-  const [isRecording, setIsRecording] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [detectionResults, setDetectionResults] = useState<DetectionResult | null>(null);
-  const [lastDetectionTime, setLastDetectionTime] = useState<Date | null>(null);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [detectedObjects, setDetectedObjects] = useState<any[]>([]);
+  const playerRef = useRef<ReactPlayer>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const detectionIntervalRef = useRef<NodeJS.Timeout>();
-  
   const { toast } = useToast();
 
-  const startWebcam = useCallback(async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'environment'
-        },
-        audio: false,
-      });
-      
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-      setFeedType('webcam');
-      setIsRecording(true);
-      
-      toast({
-        title: "Webcam Connected",
-        description: `Live feed active for ${direction} lane`,
-      });
-    } catch (error) {
-      console.error('Error accessing webcam:', error);
-      toast({
-        title: "Webcam Error",
-        description: "Unable to access camera. Please check permissions.",
-        variant: "destructive",
-      });
-    }
-  }, [direction, toast]);
-
-  const stopWebcam = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    setIsRecording(false);
-    setFeedType('none');
+  const captureFrame = useCallback((): string | null => {
+    const player = playerRef.current?.getInternalPlayer();
+    if (!player || !canvasRef.current || player.videoWidth === 0) return null;
     
-    if (detectionIntervalRef.current) {
-      clearInterval(detectionIntervalRef.current);
-    }
-  }, [stream]);
-
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && videoRef.current) {
-      const url = URL.createObjectURL(file);
-      videoRef.current.src = url;
-      videoRef.current.load();
-      setFeedType('upload');
-      
-      toast({
-        title: "Video Uploaded",
-        description: `Video file loaded for ${direction} lane`,
-      });
-    }
-  }, [direction, toast]);
-
-  const captureFrame = useCallback((): Blob | null => {
-    if (!videoRef.current || !canvasRef.current) return null;
-    
-    const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    
     if (!ctx) return null;
+
+    canvas.width = player.videoWidth;
+    canvas.height = player.videoHeight;
+    ctx.drawImage(player, 0, 0, canvas.width, canvas.height);
     
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    return new Promise<Blob>((resolve) => {
-      canvas.toBlob((blob) => {
-        resolve(blob!);
-      }, 'image/jpeg', 0.8);
-    }) as any;
+    // Return base64 image data
+    return canvas.toDataURL('image/jpeg', 0.7);
   }, []);
 
   const runDetection = useCallback(async () => {
-    if (!isActive || feedType === 'none') return;
+    if (!isActive || !isReady) return;
     
+    const frame = captureFrame();
+    if (!frame) return;
+
     try {
-      const frame = captureFrame();
-      if (!frame) return;
-      
-      let result: DetectionResult;
-      
-      try {
-        result = await detectVehicles(frame, intersectionId, detectionModel);
-      } catch (error) {
-        // Fallback to mock data if backend is not available
-        console.warn('Detection API unavailable, using mock data:', error);
-        result = mockDetectionResult(intersectionId);
-      }
-      
-      setDetectionResults(result);
-      setLastDetectionTime(new Date());
-      onDetectionUpdate(result);
-      
-    } catch (error) {
-      console.error('Detection error:', error);
+        const { data, error } = await supabase.functions.invoke('vehicle-detection', {
+            body: JSON.stringify({
+                frame: frame,
+                model: detectionModel
+            })
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data) throw new Error("No data returned from function");
+
+        const result: DetectionResult = data;
+        setDetectedObjects(result.bounding_boxes);
+        onDetectionUpdate({
+            intersectionId,
+            lane: direction,
+            vehicle_count: result.vehicle_count,
+            bounding_boxes: result.bounding_boxes
+        });
+
+    } catch (err) {
+      console.error('Detection error:', err);
+      // Do not show toast for detection errors, as they can be frequent.
+      // Consider a more subtle UI indicator if needed.
     }
-  }, [isActive, feedType, captureFrame, intersectionId, detectionModel, onDetectionUpdate]);
+  }, [isActive, isReady, captureFrame, detectionModel, intersectionId, direction, onDetectionUpdate]);
 
   useEffect(() => {
-    if (isActive && feedType !== 'none') {
-      // Run detection every 2 seconds
-      detectionIntervalRef.current = setInterval(runDetection, 2000);
-      
-      return () => {
-        if (detectionIntervalRef.current) {
-          clearInterval(detectionIntervalRef.current);
+    if (isActive && isReady) {
+      detectionIntervalRef.current = setInterval(runDetection, 5000); // 5 seconds
+      return () => clearInterval(detectionIntervalRef.current);
+    } else {
+        if(detectionIntervalRef.current) {
+            clearInterval(detectionIntervalRef.current);
         }
-      };
     }
-  }, [isActive, feedType, runDetection]);
+  }, [isActive, isReady, runDetection]);
 
-  useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (detectionIntervalRef.current) {
-        clearInterval(detectionIntervalRef.current);
-      }
-    };
-  }, [stream]);
+  const handleReady = () => {
+    setIsReady(true);
+    console.log(`Video feed ready for ${direction} lane.`);
+  };
+
+  const handleError = (e: any) => {
+    const errorMessage = `Failed to load video for ${direction} lane.`;
+    console.error(errorMessage, e);
+    setError(errorMessage + " Please check the URL and network.");
+    toast({
+      title: "Video Load Error",
+      description: errorMessage,
+      variant: "destructive",
+    });
+  };
 
   const renderBoundingBoxes = () => {
-    if (!detectionResults || !videoRef.current) return null;
+    if (!detectedObjects.length || !playerRef.current) return null;
     
-    const video = videoRef.current;
-    const scaleX = video.clientWidth / (video.videoWidth || 640);
-    const scaleY = video.clientHeight / (video.videoHeight || 480);
-    
+    const playerElement = playerRef.current.getInternalPlayer() as HTMLVideoElement;
+    if(!playerElement) return null;
+
+    const scaleX = playerElement.clientWidth / playerElement.videoWidth;
+    const scaleY = playerElement.clientHeight / playerElement.videoHeight;
+
     return (
       <div className="absolute inset-0 pointer-events-none">
         <svg className="w-full h-full">
-          {detectionResults.bounding_boxes.map((box, index) => (
+          {detectedObjects.map((box, index) => (
             <g key={index}>
               <rect
                 x={box.x * scaleX}
                 y={box.y * scaleY}
                 width={box.width * scaleX}
                 height={box.height * scaleY}
-                fill="none"
-                stroke="#00ff00"
+                className="fill-none stroke-green-400 animate-pulse"
                 strokeWidth="2"
-                className="animate-pulse"
               />
               <text
                 x={box.x * scaleX}
                 y={box.y * scaleY - 5}
-                fill="#00ff00"
-                fontSize="12"
-                className="font-mono"
+                className="fill-green-400 text-xs font-mono"
               >
                 {box.class} ({(box.confidence * 100).toFixed(0)}%)
               </text>
@@ -205,112 +149,42 @@ export const VideoFeed = ({
   };
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm">{direction} Lane</CardTitle>
-          <div className="flex items-center space-x-2">
-            {isActive && detectionResults && (
-              <Badge variant="default" className="text-xs">
-                {detectionResults.lane_counts[direction.toLowerCase() as keyof typeof detectionResults.lane_counts]} vehicles
-              </Badge>
-            )}
-            <Badge variant={isActive ? 'default' : 'secondary'} className="text-xs">
-              {isActive ? 'Active' : 'Inactive'}
-            </Badge>
-          </div>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="space-y-3">
-        {/* Video Feed */}
-        <div className="relative aspect-video bg-muted rounded overflow-hidden">
-          {feedType !== 'none' ? (
-            <>
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="w-full h-full object-cover"
-                onLoadedData={() => {
-                  // Auto-play and loop uploaded videos
-                  if (videoRef.current) {
-                    videoRef.current.currentTime = 0;
-                    videoRef.current.play();
-                  }
-                }}
-              />
-              {renderBoundingBoxes()}
-              <canvas ref={canvasRef} className="hidden" />
-            </>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-xs text-muted-foreground">No video feed</p>
-              </div>
+    <Card className="h-full overflow-hidden">
+      <CardContent className="p-0 relative aspect-video bg-muted/30">
+        {!isReady && !error && (
+             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+                <Loader className="w-8 h-8 animate-spin mb-2" />
+                <p className="text-sm">Loading video...</p>
             </div>
-          )}
-        </div>
-
-        {/* Controls */}
-        <div className="space-y-2">
-          <div className="flex space-x-2">
-            <Button
-              size="sm"
-              variant={feedType === 'webcam' ? 'destructive' : 'outline'}
-              onClick={feedType === 'webcam' ? stopWebcam : startWebcam}
-              className="flex-1 text-xs"
-            >
-              <Camera className="w-3 h-3 mr-1" />
-              {feedType === 'webcam' ? 'Stop' : 'Webcam'}
-            </Button>
-            
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 text-xs"
-            >
-              <Upload className="w-3 h-3 mr-1" />
-              Upload
-            </Button>
-          </div>
-          
-          <Input
-            ref={fileInputRef}
-            type="file"
-            accept="video/*"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </div>
-
-        {/* Detection Stats */}
-        {detectionResults && (
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Model:</span>
-              <span className="font-mono">{detectionModel.toUpperCase()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Confidence:</span>
-              <span className="font-mono">{(detectionResults.confidence * 100).toFixed(1)}%</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Vehicles:</span>
-              <span className="font-mono">{detectionResults.bounding_boxes.length}</span>
-            </div>
-            {lastDetectionTime && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Last update:</span>
-                <span className="font-mono">{lastDetectionTime.toLocaleTimeString()}</span>
-              </div>
-            )}
-          </div>
         )}
+        {error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-destructive p-4">
+                <AlertTriangle className="w-8 h-8 mb-2" />
+                <p className="text-sm text-center font-medium">{error}</p>
+            </div>
+        )}
+        <ReactPlayer
+          ref={playerRef}
+          url={feedUrl}
+          playing={true}
+          loop={true}
+          muted={true}
+          width="100%"
+          height="100%"
+          onReady={handleReady}
+          onError={handleError}
+          config={{
+            file: {
+              attributes: {
+                crossOrigin: 'anonymous'
+              }
+            }
+          }}
+          className={isReady ? '' : 'opacity-0'}
+        />
+        {isReady && renderBoundingBoxes()}
+        <canvas ref={canvasRef} className="hidden" />
+        {isActive && <Badge className="absolute top-2 left-2">Detection Active</Badge>}
       </CardContent>
     </Card>
   );
