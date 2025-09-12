@@ -1,4 +1,3 @@
-
 -- Create user roles enum
 DO $$
 BEGIN
