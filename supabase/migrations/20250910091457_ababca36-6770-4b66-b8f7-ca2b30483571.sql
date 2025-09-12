@@ -3,6 +3,7 @@
 DROP POLICY IF EXISTS "All users can view active video feeds" ON public.video_feeds;
 
 -- Create a new restrictive policy that only allows authority users to view video feeds
+DROP POLICY IF EXISTS "Authority users can view active video feeds" ON public.video_feeds;
 CREATE POLICY "Authority users can view active video feeds" 
 ON public.video_feeds 
 FOR SELECT 
@@ -17,9 +18,20 @@ USING (
 );
 
 -- Log this security fix
-INSERT INTO public.logs (event_type, message, metadata) 
-VALUES (
-  'security_fix', 
-  'Fixed video feed access vulnerability - restricted to authority users only',
-  '{"previous_policy": "all_users", "new_policy": "authority_only", "security_level": "critical"}'::jsonb
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.logs
+    WHERE event_type = 'security_fix'
+    AND message = 'Fixed video feed access vulnerability - restricted to authority users only'
+  ) THEN
+    INSERT INTO public.logs (event_type, message, metadata) 
+    VALUES (
+      'security_fix', 
+      'Fixed video feed access vulnerability - restricted to authority users only',
+      '{"previous_policy": "all_users", "new_policy": "authority_only", "security_level": "critical"}'::jsonb
+    );
+  END IF;
+END;
+$$;

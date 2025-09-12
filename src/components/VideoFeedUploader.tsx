@@ -36,7 +36,6 @@ export const VideoFeedUploader = ({ intersectionId, onUploadComplete }: VideoFee
       return;
     }
 
-    // Basic URL validation
     try {
         new URL(videoUrl);
     } catch (_) {
@@ -48,36 +47,58 @@ export const VideoFeedUploader = ({ intersectionId, onUploadComplete }: VideoFee
         return;
     }
 
-
     setSaving(true);
 
     try {
-      const { error } = await supabase
+      // Manual upsert to avoid issues with ON CONFLICT constraints
+      const { data: existing, error: selectError } = await supabase
         .from('video_feeds')
-        .upsert({
-          intersection_id: intersectionId,
-          lane_no: selectedLane,
-          feed_url: videoUrl,
-          is_active: true,
-        }, {
-          onConflict: 'intersection_id,lane_no'
-        });
+        .select('id')
+        .eq('intersection_id', intersectionId)
+        .eq('lane_no', selectedLane)
+        .single();
+
+      if (selectError && selectError.code !== 'PGRST116') { // Ignore 'not found' error
+        throw selectError;
+      }
+
+      let error;
+
+      if (existing) {
+        // If a feed exists, update it
+        const { error: updateError } = await supabase
+          .from('video_feeds')
+          .update({ feed_url: videoUrl, is_active: true })
+          .eq('id', existing.id);
+        error = updateError;
+      } else {
+        // Otherwise, insert a new feed
+        const { error: insertError } = await supabase
+          .from('video_feeds')
+          .insert({
+            intersection_id: intersectionId,
+            lane_no: selectedLane,
+            feed_url: videoUrl,
+            is_active: true,
+          });
+        error = insertError;
+      }
 
       if (error) throw error;
 
       toast({
         title: "Video Feed Saved",
-        description: `Video feed URL configured for Lane ${selectedLane} (${lanes.find(l => l.no === selectedLane)?.direction})`
+        description: `Video feed URL configured for Lane ${selectedLane}`,
       });
 
       setVideoUrl('');
       onUploadComplete?.();
-      
+
     } catch (error) {
       console.error('URL configuration error:', error);
       toast({
         title: "Configuration Failed",
-        description: (error as Error).message || "Failed to configure video feed URL",
+        description: (error as Error).message || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -92,7 +113,6 @@ export const VideoFeedUploader = ({ intersectionId, onUploadComplete }: VideoFee
           <CardTitle>Configure Video Feed</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Lane Selection */}
           <div>
             <Label htmlFor="lane-select">Select Lane</Label>
             <Select value={selectedLane.toString()} onValueChange={(value) => setSelectedLane(parseInt(value))}>
@@ -109,7 +129,6 @@ export const VideoFeedUploader = ({ intersectionId, onUploadComplete }: VideoFee
             </Select>
           </div>
 
-          {/* Video URL Input */}
           <div className="space-y-3">
               <Label htmlFor="video-url">Video URL</Label>
               <div className="flex space-x-2">
@@ -132,7 +151,7 @@ export const VideoFeedUploader = ({ intersectionId, onUploadComplete }: VideoFee
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Enter a video URL (e.g., YouTube, .mp4) or an RTSP stream URL.
+                Enter a valid video URL from sources like YouTube, or a direct .mp4 or RTSP stream link.
               </p>
             </div>
         </CardContent>

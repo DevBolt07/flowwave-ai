@@ -1,8 +1,20 @@
 -- Migration to fix video_feeds constraint and add missing lane data.
 
 -- Add unique constraint to video_feeds table
-ALTER TABLE public.video_feeds
-ADD CONSTRAINT video_feeds_intersection_id_lane_no_key UNIQUE (intersection_id, lane_no);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.video_feeds'::regclass
+    AND conname = 'video_feeds_intersection_id_lane_no_key'
+  )
+  THEN
+    ALTER TABLE public.video_feeds ADD CONSTRAINT video_feeds_intersection_id_lane_no_key UNIQUE (intersection_id, lane_no);
+  END IF;
+END;
+$$;
+
 
 -- Add lane data for other intersections to provide a consistent UI experience.
 DO $$
@@ -13,9 +25,9 @@ DECLARE
 BEGIN
     -- Get IDs for the intersections that are missing lane data.
     -- We assume these intersections already exist in the 'intersections' table.
-    SELECT id INTO jm_road_id FROM public.intersections WHERE name = 'JM Road';
-    SELECT id INTO shivaji_nagar_id FROM public.intersections WHERE name = 'Shivaji Nagar';
-    SELECT id INTO swargate_id FROM public.intersections WHERE name = 'Swargate';
+    SELECT id INTO jm_road_id FROM public.intersections WHERE name = 'JM Road × FC Road';
+    SELECT id INTO shivaji_nagar_id FROM public.intersections WHERE name = 'Shivajinagar Square';
+    SELECT id INTO swargate_id FROM public.intersections WHERE name = 'Swargate Intersection';
 
     -- Insert lanes for JM Road, if the ID was found
     IF jm_road_id IS NOT NULL THEN
