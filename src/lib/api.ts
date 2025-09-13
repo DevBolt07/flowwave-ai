@@ -1,6 +1,9 @@
-import { supabase } from '@/integrations/supabase/client';
+// API integration utilities for Smart Traffic Management System
 
-// Type Definitions
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://your-backend-api.com/api' 
+  : 'http://localhost:5000/api';
+
 export interface DetectionResult {
   bounding_boxes: Array<{
     x: number;
@@ -53,45 +56,137 @@ export interface CorridorRequest {
   };
 }
 
-/**
- * Calculates Green Signal Time (GST) for an intersection using a Supabase Edge Function.
- * @param intersectionId The ID of the intersection.
- * @param laneCounts An object with vehicle counts for each lane.
- * @param config GST calculation parameters.
- * @returns A promise that resolves to an array of GST results for each lane.
- */
+// Vehicle Detection API
+export const detectVehicles = async (
+  videoFrame: Blob,
+  intersectionId: string,
+  model: 'yolov8' | 'rt-detr' | 'yolo-nas' | 'pp-yoloe' = 'yolov8'
+): Promise<DetectionResult> => {
+  const formData = new FormData();
+  formData.append('frame', videoFrame);
+  formData.append('intersection_id', intersectionId);
+  formData.append('model', model);
+
+  const response = await fetch(`${API_BASE_URL}/detect`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Detection API error: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
+// GST Calculation API
 export const calculateGST = async (
   intersectionId: string,
   laneCounts: { north: number; south: number; east: number; west: number },
   config: { min_gst: number; max_gst: number; base_time: number; vehicle_factor: number }
 ): Promise<GST[]> => {
-  const { data, error } = await supabase.functions.invoke('gst-calculator', {
-    body: {
+  const response = await fetch(`${API_BASE_URL}/gst`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
       intersection_id: intersectionId,
       lane_counts: laneCounts,
       config,
-    },
+    }),
   });
 
-  if (error) {
-    throw new Error(`GST calculation error: ${error.message}`);
+  if (!response.ok) {
+    throw new Error(`GST API error: ${response.statusText}`);
   }
 
-  return data;
+  return response.json();
 };
 
+// Route Planning API
+export const calculateRoute = async (
+  source: { lat: number; lng: number },
+  destination: { lat: number; lng: number }
+): Promise<RouteResult> => {
+  const response = await fetch(`${API_BASE_URL}/route`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      source,
+      destination,
+    }),
+  });
 
-// Note: Other API functions like vehicle detection and route planning are now called
-// directly from their respective components using `supabase.functions.invoke()`.
-// This file is maintained for shared type definitions and genuinely shared API calls.
+  if (!response.ok) {
+    throw new Error(`Route API error: ${response.statusText}`);
+  }
 
+  return response.json();
+};
 
-// Mock fallback functions
+// Emergency Corridor Management
+export const startCorridor = async (request: CorridorRequest): Promise<{ success: boolean; corridor_id: string }> => {
+  const response = await fetch(`${API_BASE_URL}/corridor/start`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
 
+  if (!response.ok) {
+    throw new Error(`Corridor start API error: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
+export const stopCorridor = async (emergencyId: string): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE_URL}/corridor/stop`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      emergency_id: emergencyId,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Corridor stop API error: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
+// Simulation step for demo purposes
+export const simulationStep = async (intersectionId: string): Promise<{ success: boolean }> => {
+  const response = await fetch(`${API_BASE_URL}/sim/step`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      intersection_id: intersectionId,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Simulation API error: ${response.statusText}`);
+  }
+
+  return response.json();
+};
+
+// Fallback functions for when backend is not available
 export const mockDetectionResult = (intersectionId: string): DetectionResult => ({
   bounding_boxes: [
     { x: 100, y: 100, width: 80, height: 120, confidence: 0.92, class: 'car', lane: 1 },
     { x: 200, y: 150, width: 90, height: 110, confidence: 0.88, class: 'truck', lane: 1 },
+    { x: 50, y: 200, width: 70, height: 100, confidence: 0.85, class: 'bike', lane: 2 },
   ],
   lane_counts: {
     north: Math.floor(Math.random() * 20) + 5,
