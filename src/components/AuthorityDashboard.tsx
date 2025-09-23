@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { IntersectionCard } from "./IntersectionCard";
 import { TrafficLight } from "./TrafficLight";
 import { VideoFeed } from "./VideoFeed";
-import { VideoFeedUploader } from "./VideoFeedUploader";
-import { ArrowLeft, Shield, Settings, Play, Square, AlertTriangle, Eye, Car, Zap, Upload } from "lucide-react";
+import { ArrowLeft, Shield, Settings, Play, Square, AlertTriangle, Eye, Car, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeData } from "@/hooks/useRealtimeData";
@@ -307,13 +306,6 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
             {/* Video Upload Section */}
             {selectedIntersection && (
               <>
-                <VideoFeedUploader 
-                  intersectionId={selectedIntersection}
-                  onUploadComplete={() => {
-                    // Refresh data if needed
-                  }}
-                />
-                
                 {/* Live Video Feeds */}
                 <Card>
                   <CardHeader>
