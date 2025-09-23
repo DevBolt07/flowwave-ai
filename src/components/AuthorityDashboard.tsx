@@ -184,7 +184,7 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
               className="flex items-center space-x-2"
             >
               <Icon className="w-4 h-4" />
-              <span>{label}</span>
+              <span className='hidden md:inline'>{label}</span>
             </Button>
           ))}
         </div>
@@ -303,7 +303,6 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
               </CardContent>
             </Card>
 
-            {/* Video Upload Section */}
             {selectedIntersection && (
               <>
                 {/* Live Video Feeds */}
