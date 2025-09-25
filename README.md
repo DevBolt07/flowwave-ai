@@ -1,6 +1,18 @@
-Get started by customizing your environment (defined in the .idx/dev.nix file) with the tools and IDE extensions you'll need for your project!
+# Welcome to your Lovable project
 
-Learn more at https://developers.google.com/idx/guides/customize-idx-env
+**URL**: https://lovable.dev/projects/125d1b55-f381-4b5e-a27f-b8e001304610
+
+---
+
+## What technologies are used for this project?
+
+This project is built with:
+
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
 ---
 
@@ -100,3 +112,9 @@ After you've made some progress and want to save your work, follow these three c
         ```bash
         git push origin feature/emergency-dashboard
         ```
+
+---
+
+## How can I deploy this project?
+
+Simply open [Lovable](https://lovable.dev/projects/125d1b55-f381-4b5e-a27f-b8e001304610) and click on Share -> Publish.

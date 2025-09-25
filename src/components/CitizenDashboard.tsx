@@ -1,0 +1,236 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { IntersectionCard } from "./IntersectionCard";
+import { TrafficLight } from "./TrafficLight";
+import { ArrowLeft, MapPin, AlertTriangle, Clock, Car } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface CitizenDashboardProps {
+  onBack: () => void;
+}
+
+// Mock data for intersections
+const mockIntersections = [
+  {
+    id: "int-001",
+    name: "MG Road × Brigade Road",
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 12, signal: 'green' as const, gstTime: 45 },
+      { id: 2, name: "South", vehicleCount: 8, signal: 'red' as const, gstTime: 0 },
+      { id: 3, name: "East", vehicleCount: 15, signal: 'red' as const, gstTime: 0 },
+      { id: 4, name: "West", vehicleCount: 6, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: false
+  },
+  {
+    id: "int-002", 
+    name: "Whitefield × ITPL Main",
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 24, signal: 'red' as const, gstTime: 0 },
+      { id: 2, name: "South", vehicleCount: 18, signal: 'amber' as const, gstTime: 5 },
+      { id: 3, name: "East", vehicleCount: 9, signal: 'red' as const, gstTime: 0 },
+      { id: 4, name: "West", vehicleCount: 14, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: false
+  },
+  {
+    id: "int-003",
+    name: "Koramangala × Hosur Road", 
+    lanes: [
+      { id: 1, name: "North", vehicleCount: 31, signal: 'red' as const, gstTime: 0 },
+      { id: 2, name: "South", vehicleCount: 7, signal: 'red' as const, gstTime: 0, hasEmergency: true },
+      { id: 3, name: "East", vehicleCount: 19, signal: 'green' as const, gstTime: 28 },
+      { id: 4, name: "West", vehicleCount: 12, signal: 'red' as const, gstTime: 0 }
+    ],
+    emergencyActive: true
+  }
+];
+
+export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
+  const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
+  
+  const totalIntersections = mockIntersections.length;
+  const emergencyActive = mockIntersections.some(i => i.emergencyActive);
+  const totalVehicles = mockIntersections.reduce((sum, intersection) => 
+    sum + intersection.lanes.reduce((laneSum, lane) => laneSum + lane.vehicleCount, 0), 0
+  );
+
+  const selectedIntersectionData = selectedIntersection 
+    ? mockIntersections.find(i => i.id === selectedIntersection)
+    : null;
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b bg-card">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold">Citizen Traffic View</h1>
+                <p className="text-sm text-muted-foreground">Real-time city traffic monitoring</p>
+              </div>
+            </div>
+            
+            {emergencyActive && (
+              <Badge variant="destructive" className="emergency-flash">
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                Emergency Active
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                <div>
+                  <div className="text-2xl font-bold">{totalIntersections}</div>
+                  <div className="text-xs text-muted-foreground">Active Intersections</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Car className="w-5 h-5 text-secondary" />
+                <div>
+                  <div className="text-2xl font-bold">{totalVehicles}</div>
+                  <div className="text-xs text-muted-foreground">Total Vehicles</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Clock className="w-5 h-5 text-accent" />
+                <div>
+                  <div className="text-2xl font-bold">2.3</div>
+                  <div className="text-xs text-muted-foreground">Avg Wait (min)</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className={cn(
+                  "w-5 h-5",
+                  emergencyActive ? "text-emergency" : "text-muted-foreground"
+                )} />
+                <div>
+                  <div className="text-2xl font-bold">{emergencyActive ? 1 : 0}</div>
+                  <div className="text-xs text-muted-foreground">Emergency Events</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Intersections List */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5" />
+                  <span>City Intersections</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4">
+                  {mockIntersections.map((intersection) => (
+                    <IntersectionCard
+                      key={intersection.id}
+                      id={intersection.id}
+                      name={intersection.name}
+                      lanes={intersection.lanes}
+                      emergencyActive={intersection.emergencyActive}
+                      onClick={() => setSelectedIntersection(intersection.id)}
+                      className={selectedIntersection === intersection.id ? "ring-2 ring-primary" : ""}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Intersection Detail */}
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {selectedIntersectionData ? "Intersection Details" : "Select Intersection"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedIntersectionData ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2">{selectedIntersectionData.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        ID: {selectedIntersectionData.id}
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium">Lane Status</h4>
+                      {selectedIntersectionData.lanes.map((lane) => (
+                        <div key={lane.id} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                          <div className="flex items-center space-x-2">
+                            <TrafficLight signal={lane.signal} className="scale-50" />
+                            <span className="text-sm font-medium">{lane.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-medium">{lane.vehicleCount} vehicles</div>
+                            {lane.signal === 'green' && (
+                              <div className="text-xs text-secondary">{lane.gstTime}s remaining</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {selectedIntersectionData.emergencyActive && (
+                      <div className="p-3 bg-emergency/10 border border-emergency/20 rounded">
+                        <div className="flex items-center space-x-2 text-emergency">
+                          <AlertTriangle className="w-4 h-4" />
+                          <span className="text-sm font-medium">Emergency Corridor Active</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Priority signaling in progress for emergency vehicle
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <MapPin className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">Click on an intersection to view details</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
