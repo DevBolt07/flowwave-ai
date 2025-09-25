@@ -28,6 +28,7 @@ First, everyone needs to copy the project from GitHub to their own computer.
 
     ```bash
     npm install --legacy-peer-deps
+    npm run dev
 
     ```
 
