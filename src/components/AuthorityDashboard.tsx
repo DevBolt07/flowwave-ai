@@ -7,11 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { IntersectionCard } from "./IntersectionCard";
 import { TrafficLight } from "./TrafficLight";
 import { VideoFeed } from "./VideoFeed";
-import { ArrowLeft, Shield, Settings, Play, Square, AlertTriangle, Eye, Car, Zap } from "lucide-react";
+import { ArrowLeft, Shield, Settings, Play, Square, AlertTriangle, Eye, Car, Zap, Map as MapIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeData } from "@/hooks/useRealtimeData";
 import { DetectionResult, calculateGST } from "@/lib/api";
+import { MapView, MapIntersection } from "./MapView";
 
 interface AuthorityDashboardProps {
   onBack: () => void;
@@ -19,7 +20,7 @@ interface AuthorityDashboardProps {
 
 export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'control' | 'config' | 'video'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'control' | 'config' | 'video' | 'map'>('map');
   const [detectionRunning, setDetectionRunning] = useState(true);
   const [detectionModel, setDetectionModel] = useState<'yolov8' | 'rt-detr' | 'yolo-nas' | 'pp-yoloe'>('yolov8');
   const [gstConfig, setGstConfig] = useState({
@@ -171,6 +172,7 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
         {/* Tabs */}
         <div className="flex space-x-1 mb-6 bg-muted p-1 rounded-lg w-fit">
           {[
+            { id: 'map', label: 'Live Map', icon: MapIcon },
             { id: 'overview', label: 'System Overview', icon: Shield },
             { id: 'video', label: 'Live Video Feeds', icon: Eye },
             { id: 'control', label: 'Manual Control', icon: Zap },
@@ -188,6 +190,116 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
             </Button>
           ))}
         </div>
+
+        {/* Map Tab */}
+        {activeTab === 'map' && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Traffic System Map View</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MapView
+                  intersections={intersections.map((intersection): MapIntersection => {
+                    const intersectionLanes = getLanesByIntersection(intersection.id);
+                    const totalVehicles = intersectionLanes.reduce((sum, lane) => sum + (lane.vehicle_count || 0), 0);
+                    const hasEmergency = intersectionLanes.some(lane => lane.has_emergency);
+                    const greenLanes = intersectionLanes.filter(lane => lane.signal_state === 'green');
+                    const signalState = greenLanes.length > 0 ? 'green' : 'red';
+                    
+                    return {
+                      id: intersection.id,
+                      name: intersection.name,
+                      latitude: intersection.latitude || 0,
+                      longitude: intersection.longitude || 0,
+                      hasEmergency,
+                      signalState,
+                      vehicleCount: totalVehicles,
+                    };
+                  })}
+                  onIntersectionClick={(intersection) => {
+                    setSelectedIntersection(intersection.id);
+                    setActiveTab('overview');
+                  }}
+                  center={intersections.length > 0 && intersections[0].latitude && intersections[0].longitude
+                    ? [intersections[0].latitude, intersections[0].longitude]
+                    : [12.9716, 77.5946]}
+                  zoom={13}
+                  className="h-[600px] w-full rounded-lg overflow-hidden border"
+                />
+              </CardContent>
+            </Card>
+
+            {/* Map Legend */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Map Legend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 rounded-full bg-primary border-2 border-primary-foreground"></div>
+                    <span className="text-sm">Intersection</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#22c55e' }}></div>
+                    <span className="text-sm">Green Signal</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: '#ef4444' }}></div>
+                    <span className="text-sm">Red Signal</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 rounded-full bg-emergency emergency-flash"></div>
+                    <span className="text-sm">Emergency Active</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-primary">{intersections.length}</div>
+                    <div className="text-sm text-muted-foreground mt-1">Total Intersections</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-secondary">
+                      {lanes.reduce((sum, lane) => sum + (lane.vehicle_count || 0), 0)}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">Vehicles Detected</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-accent">
+                      {lanes.filter(lane => lane.signal_state === 'green').length}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">Green Signals</div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-emergency">
+                      {activeEmergencies.length}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-1">Active Emergencies</div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
 
         {/* Overview Tab */}
         {activeTab === 'overview' && (
