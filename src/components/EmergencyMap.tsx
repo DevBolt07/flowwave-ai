@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
-import { MapPin, Hospital, Ambulance, Navigation } from 'lucide-react';
+import { Input } from './ui/input';
+import { MapPin, Hospital, Ambulance, Navigation, Locate, Search } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Create custom icons
 const createIcon = (iconUrl: string, size: [number, number] = [32, 32]) => new Icon({
@@ -77,6 +79,15 @@ const MapClickHandler = ({ onLocationSelect }: { onLocationSelect: (lat: number,
   return null;
 };
 
+// Component to update map center
+const MapCenterUpdater = ({ center }: { center: [number, number] }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+  return null;
+};
+
 // Calculate distance between two points using Haversine formula
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
   const R = 6371; // Earth's radius in km
@@ -104,6 +115,9 @@ export const EmergencyMap = ({
   const [patientLocation, setPatientLocation] = useState<[number, number] | null>(null);
   const [nearestHospital, setNearestHospital] = useState<Hospital | null>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][] | null>(null);
+  const [mapCenter, setMapCenter] = useState<[number, number]>(center);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [addressSearch, setAddressSearch] = useState('');
 
   const handleLocationSelect = (lat: number, lng: number) => {
     if (!allowPatientSelection) return;
@@ -144,11 +158,100 @@ export const EmergencyMap = ({
     setRouteCoordinates(null);
   };
 
+  const getCurrentLocation = () => {
+    setIsLoadingLocation(true);
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location: [number, number] = [position.coords.latitude, position.coords.longitude];
+          setMapCenter(location);
+          toast.success('Location detected successfully');
+          setIsLoadingLocation(false);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          toast.error('Unable to get your location. Please enable location services.');
+          setIsLoadingLocation(false);
+        }
+      );
+    } else {
+      toast.error('Geolocation is not supported by your device');
+      setIsLoadingLocation(false);
+    }
+  };
+
+  const searchAddress = async () => {
+    if (!addressSearch.trim()) {
+      toast.error('Please enter an address');
+      return;
+    }
+
+    try {
+      // Using OpenStreetMap Nominatim API for geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressSearch)}&limit=1`
+      );
+      const data = await response.json();
+
+      if (data.length > 0) {
+        const location: [number, number] = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+        setMapCenter(location);
+        if (allowPatientSelection) {
+          handleLocationSelect(location[0], location[1]);
+        }
+        toast.success('Address found and displayed on map');
+      } else {
+        toast.error('Address not found. Please try a different search.');
+      }
+    } catch (error) {
+      console.error('Error searching address:', error);
+      toast.error('Failed to search address. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    // Auto-detect location on component mount
+    if (allowPatientSelection) {
+      getCurrentLocation();
+    }
+  }, [allowPatientSelection]);
+
   return (
     <div className="relative">
+      {/* Address Search Bar */}
+      {allowPatientSelection && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-full max-w-md px-4">
+          <Card className="bg-background/95 backdrop-blur">
+            <CardContent className="p-3 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Enter destination address..."
+                  value={addressSearch}
+                  onChange={(e) => setAddressSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchAddress()}
+                  className="flex-1"
+                />
+                <Button size="sm" onClick={searchAddress}>
+                  <Search className="w-4 h-4" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={getCurrentLocation}
+                  disabled={isLoadingLocation}
+                >
+                  <Locate className={`w-4 h-4 ${isLoadingLocation ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className={className}>
         <MapContainer
-          center={center}
+          center={mapCenter}
           zoom={zoom}
           style={{ height: '100%', width: '100%' }}
           className="z-0"
@@ -157,6 +260,8 @@ export const EmergencyMap = ({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
+          
+          <MapCenterUpdater center={mapCenter} />
           
           {allowPatientSelection && (
             <MapClickHandler onLocationSelect={handleLocationSelect} />
