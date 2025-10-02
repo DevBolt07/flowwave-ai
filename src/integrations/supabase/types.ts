@@ -14,14 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      ambulances: {
+        Row: {
+          created_at: string
+          current_latitude: number | null
+          current_longitude: number | null
+          driver_id: string | null
+          hospital_id: string | null
+          id: string
+          last_updated: string
+          status: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_latitude?: number | null
+          current_longitude?: number | null
+          driver_id?: string | null
+          hospital_id?: string | null
+          id?: string
+          last_updated?: string
+          status?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          current_latitude?: number | null
+          current_longitude?: number | null
+          driver_id?: string | null
+          hospital_id?: string | null
+          id?: string
+          last_updated?: string
+          status?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambulances_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       emergencies: {
         Row: {
+          ambulance_id: string | null
           created_at: string
           destination_latitude: number | null
           destination_longitude: number | null
           driver_id: string | null
+          emergency_type: string | null
           eta_minutes: number | null
+          hospital_id: string | null
           id: string
+          patient_contact: string | null
+          patient_name: string | null
           priority_level: number | null
           route: Json | null
           source_latitude: number | null
@@ -29,14 +78,20 @@ export type Database = {
           status: Database["public"]["Enums"]["emergency_status"] | null
           updated_at: string
           vehicle_id: string | null
+          workflow_status: string | null
         }
         Insert: {
+          ambulance_id?: string | null
           created_at?: string
           destination_latitude?: number | null
           destination_longitude?: number | null
           driver_id?: string | null
+          emergency_type?: string | null
           eta_minutes?: number | null
+          hospital_id?: string | null
           id?: string
+          patient_contact?: string | null
+          patient_name?: string | null
           priority_level?: number | null
           route?: Json | null
           source_latitude?: number | null
@@ -44,14 +99,20 @@ export type Database = {
           status?: Database["public"]["Enums"]["emergency_status"] | null
           updated_at?: string
           vehicle_id?: string | null
+          workflow_status?: string | null
         }
         Update: {
+          ambulance_id?: string | null
           created_at?: string
           destination_latitude?: number | null
           destination_longitude?: number | null
           driver_id?: string | null
+          emergency_type?: string | null
           eta_minutes?: number | null
+          hospital_id?: string | null
           id?: string
+          patient_contact?: string | null
+          patient_name?: string | null
           priority_level?: number | null
           route?: Json | null
           source_latitude?: number | null
@@ -59,6 +120,67 @@ export type Database = {
           status?: Database["public"]["Enums"]["emergency_status"] | null
           updated_at?: string
           vehicle_id?: string | null
+          workflow_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergencies_ambulance_id_fkey"
+            columns: ["ambulance_id"]
+            isOneToOne: false
+            referencedRelation: "ambulances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergencies_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hospitals: {
+        Row: {
+          address: string | null
+          available_beds: number | null
+          capacity: number | null
+          contact_number: string | null
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          specialties: string[]
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          available_beds?: number | null
+          capacity?: number | null
+          contact_number?: string | null
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          specialties?: string[]
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          available_beds?: number | null
+          capacity?: number | null
+          contact_number?: string | null
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          specialties?: string[]
+          status?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

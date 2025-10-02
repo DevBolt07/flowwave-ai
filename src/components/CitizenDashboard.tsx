@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IntersectionCard } from "./IntersectionCard";
 import { TrafficLight } from "./TrafficLight";
-import { ArrowLeft, MapPin, AlertTriangle, Clock, Car } from "lucide-react";
+import { EmergencyMap, Hospital } from "./EmergencyMap";
+import { ArrowLeft, MapPin, AlertTriangle, Clock, Car, Map as MapIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getHospitals, getAmbulances } from "@/lib/supabase-api";
 
 interface CitizenDashboardProps {
   onBack: () => void;
@@ -50,6 +53,21 @@ const mockIntersections = [
 
 export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [ambulances, setAmbulances] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadMapData();
+  }, []);
+
+  const loadMapData = async () => {
+    const [hospitalsData, ambulancesData] = await Promise.all([
+      getHospitals(),
+      getAmbulances()
+    ]);
+    setHospitals(hospitalsData as Hospital[]);
+    setAmbulances(ambulancesData);
+  };
   
   const totalIntersections = mockIntersections.length;
   const emergencyActive = mockIntersections.some(i => i.emergencyActive);
@@ -144,33 +162,46 @@ export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Intersections List */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="w-5 h-5" />
-                  <span>City Intersections</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4">
-                  {mockIntersections.map((intersection) => (
-                    <IntersectionCard
-                      key={intersection.id}
-                      id={intersection.id}
-                      name={intersection.name}
-                      lanes={intersection.lanes}
-                      emergencyActive={intersection.emergencyActive}
-                      onClick={() => setSelectedIntersection(intersection.id)}
-                      className={selectedIntersection === intersection.id ? "ring-2 ring-primary" : ""}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        <Tabs defaultValue="intersections" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="intersections">
+              <Car className="w-4 h-4 mr-2" />
+              Intersections
+            </TabsTrigger>
+            <TabsTrigger value="map">
+              <MapIcon className="w-4 h-4 mr-2" />
+              City Map
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="intersections">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Intersections List */}
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <MapPin className="w-5 h-5" />
+                      <span>City Intersections</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4">
+                      {mockIntersections.map((intersection) => (
+                        <IntersectionCard
+                          key={intersection.id}
+                          id={intersection.id}
+                          name={intersection.name}
+                          lanes={intersection.lanes}
+                          emergencyActive={intersection.emergencyActive}
+                          onClick={() => setSelectedIntersection(intersection.id)}
+                          className={selectedIntersection === intersection.id ? "ring-2 ring-primary" : ""}
+                        />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
           {/* Intersection Detail */}
           <div>
@@ -228,8 +259,41 @@ export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
                 )}
               </CardContent>
             </Card>
-          </div>
-        </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="map">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MapIcon className="w-5 h-5" />
+                  <span>City Traffic & Emergency Services Map</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EmergencyMap
+                  hospitals={hospitals}
+                  ambulances={ambulances}
+                  center={[12.9716, 77.5946]}
+                  zoom={12}
+                  className="h-[600px] w-full rounded-lg overflow-hidden border"
+                  allowPatientSelection={false}
+                  showRoute={false}
+                />
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium mb-2 text-sm">Map Information</h4>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    <li>• View real-time locations of hospitals and ambulances</li>
+                    <li>• Green markers indicate available hospitals</li>
+                    <li>• Blue markers show active ambulances</li>
+                    <li>• Click on markers for detailed information</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

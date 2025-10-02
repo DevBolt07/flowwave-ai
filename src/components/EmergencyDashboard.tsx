@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Navigation, AlertTriangle, MapPin, Clock, Route } from "lucide-react";
+import { ArrowLeft, Navigation, AlertTriangle, MapPin, Clock, Route, Hospital as HospitalIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmergencyMap, Hospital } from "./EmergencyMap";
+import { getHospitals, getAmbulances } from "@/lib/supabase-api";
+import { useToast } from "@/hooks/use-toast";
 
 interface EmergencyDashboardProps {
   onBack: () => void;
@@ -14,6 +17,24 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
   const [destination, setDestination] = useState("");
   const [routeActive, setRouteActive] = useState(false);
   const [corridorStatus, setCorridorStatus] = useState<'idle' | 'requesting' | 'active'>('idle');
+  const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [ambulances, setAmbulances] = useState<any[]>([]);
+  const [patientLocation, setPatientLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadMapData();
+  }, []);
+
+  const loadMapData = async () => {
+    const [hospitalsData, ambulancesData] = await Promise.all([
+      getHospitals(),
+      getAmbulances()
+    ]);
+    setHospitals(hospitalsData as Hospital[]);
+    setAmbulances(ambulancesData);
+  };
   
   const handleDestinationSubmit = () => {
     if (destination.trim()) {
@@ -36,6 +57,25 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
     setCorridorStatus('idle');
     setRouteActive(false);
     setDestination("");
+    setPatientLocation(null);
+    setSelectedHospital(null);
+  };
+
+  const handlePatientLocationSelect = (lat: number, lng: number) => {
+    setPatientLocation({ lat, lng });
+    toast({
+      title: "Patient Location Set",
+      description: `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+    });
+  };
+
+  const handleNearestHospitalFound = (hospital: Hospital, distance: number) => {
+    setSelectedHospital(hospital);
+    toast({
+      title: "Nearest Hospital Found",
+      description: `${hospital.name} - ${distance.toFixed(2)} km away`,
+      variant: "default",
+    });
   };
 
   return (
@@ -215,30 +255,83 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
           </div>
         </div>
 
-        {/* Live Map Simulation */}
+        {/* Live Emergency Map */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <MapPin className="w-5 h-5" />
-              <span>Live Traffic Map</span>
+              <span>Emergency Response Map</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64 bg-muted/30 rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
-              <div className="text-center">
-                <Route className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">
-                  {corridorStatus === 'active' 
-                    ? routeActive 
-                      ? `Interactive map showing route to ${destination} with green corridor`
-                      : 'Map showing priority intersection with active green signal'
-                    : 'Map will display when emergency corridor is activated'
-                  }
-                </p>
-              </div>
-            </div>
+            <EmergencyMap
+              hospitals={hospitals}
+              ambulances={ambulances}
+              center={[12.9716, 77.5946]}
+              zoom={12}
+              className="h-[500px] w-full rounded-lg overflow-hidden border"
+              allowPatientSelection={corridorStatus === 'idle'}
+              onPatientLocationSelect={handlePatientLocationSelect}
+              onNearestHospitalFound={handleNearestHospitalFound}
+              showRoute={patientLocation !== null}
+            />
           </CardContent>
         </Card>
+
+        {/* Hospital Details */}
+        {selectedHospital && patientLocation && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <HospitalIcon className="w-5 h-5 text-secondary" />
+                <span>Selected Hospital Details</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">Hospital Name</div>
+                  <div className="font-medium">{selectedHospital.name}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Available Beds</div>
+                  <div className="font-medium">{selectedHospital.available_beds || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Contact</div>
+                  <div className="font-medium text-sm">{selectedHospital.contact_number || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Specialties</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedHospital.specialties?.slice(0, 3).map((spec) => (
+                      <Badge key={spec} variant="outline" className="text-xs">
+                        {spec}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {selectedHospital.address && (
+                <div>
+                  <div className="text-sm text-muted-foreground">Address</div>
+                  <div className="text-sm">{selectedHospital.address}</div>
+                </div>
+              )}
+              <Button 
+                onClick={() => {
+                  setDestination(selectedHospital.name);
+                  handleDestinationSubmit();
+                }}
+                variant="destructive"
+                className="w-full"
+              >
+                <Navigation className="w-4 h-4 mr-2" />
+                Start Emergency Route to Hospital
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
