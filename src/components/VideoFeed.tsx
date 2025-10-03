@@ -3,9 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Camera, Upload, Square, Play, AlertTriangle } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Camera, Upload, Square, Play, AlertTriangle, Link2, Video } from 'lucide-react';
 import { detectVehicles, DetectionResult, mockDetectionResult } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+
+// Sample demo videos that loop by default
+const DEMO_VIDEOS = [
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
+];
 
 interface VideoFeedProps {
   intersectionId: string;
@@ -22,11 +31,13 @@ export const VideoFeed = ({
   detectionModel,
   isActive,
 }: VideoFeedProps) => {
-  const [feedType, setFeedType] = useState<'none' | 'webcam' | 'upload'>('none');
+  const [feedType, setFeedType] = useState<'demo' | 'webcam' | 'upload' | 'url'>('demo');
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [detectionResults, setDetectionResults] = useState<DetectionResult | null>(null);
   const [lastDetectionTime, setLastDetectionTime] = useState<Date | null>(null);
+  const [streamUrl, setStreamUrl] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,6 +45,20 @@ export const VideoFeed = ({
   const detectionIntervalRef = useRef<NodeJS.Timeout>();
   
   const { toast } = useToast();
+
+  // Get demo video based on direction
+  const getDemoVideoUrl = () => {
+    const directionMap = { 'North': 0, 'South': 1, 'East': 2, 'West': 3 };
+    return DEMO_VIDEOS[directionMap[direction]];
+  };
+
+  // Load demo video on mount
+  useEffect(() => {
+    if (videoRef.current && feedType === 'demo') {
+      videoRef.current.src = getDemoVideoUrl();
+      videoRef.current.load();
+    }
+  }, []);
 
   const startWebcam = useCallback(async () => {
     try {
@@ -73,12 +98,18 @@ export const VideoFeed = ({
       setStream(null);
     }
     setIsRecording(false);
-    setFeedType('none');
+    setFeedType('demo');
     
     if (detectionIntervalRef.current) {
       clearInterval(detectionIntervalRef.current);
     }
-  }, [stream]);
+
+    // Return to demo video
+    if (videoRef.current) {
+      videoRef.current.src = getDemoVideoUrl();
+      videoRef.current.load();
+    }
+  }, [stream, direction]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -94,6 +125,41 @@ export const VideoFeed = ({
       });
     }
   }, [direction, toast]);
+
+  const handleUrlSubmit = useCallback(() => {
+    if (streamUrl && videoRef.current) {
+      videoRef.current.src = streamUrl;
+      videoRef.current.load();
+      setFeedType('url');
+      setShowUrlInput(false);
+      
+      toast({
+        title: "Stream URL Set",
+        description: `Stream loaded for ${direction} lane`,
+      });
+    }
+  }, [streamUrl, direction, toast]);
+
+  const resetToDemo = useCallback(() => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setIsRecording(false);
+    setFeedType('demo');
+    setStreamUrl('');
+    setShowUrlInput(false);
+    
+    if (videoRef.current) {
+      videoRef.current.src = getDemoVideoUrl();
+      videoRef.current.load();
+    }
+    
+    toast({
+      title: "Demo Video Restored",
+      description: `Showing demo video for ${direction} lane`,
+    });
+  }, [stream, direction, toast]);
 
   const captureFrame = useCallback((): Blob | null => {
     if (!videoRef.current || !canvasRef.current) return null;
@@ -117,7 +183,7 @@ export const VideoFeed = ({
   }, []);
 
   const runDetection = useCallback(async () => {
-    if (!isActive || feedType === 'none') return;
+    if (!isActive) return;
     
     try {
       const frame = captureFrame();
@@ -143,7 +209,7 @@ export const VideoFeed = ({
   }, [isActive, feedType, captureFrame, intersectionId, detectionModel, onDetectionUpdate]);
 
   useEffect(() => {
-    if (isActive && feedType !== 'none') {
+    if (isActive) {
       // Run detection every 2 seconds
       detectionIntervalRef.current = setInterval(runDetection, 2000);
       
@@ -153,7 +219,7 @@ export const VideoFeed = ({
         }
       };
     }
-  }, [isActive, feedType, runDetection]);
+  }, [isActive, runDetection]);
 
   useEffect(() => {
     return () => {
@@ -225,59 +291,104 @@ export const VideoFeed = ({
       <CardContent className="space-y-3">
         {/* Video Feed */}
         <div className="relative aspect-video bg-muted rounded overflow-hidden">
-          {feedType !== 'none' ? (
-            <>
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="w-full h-full object-cover"
-                onLoadedData={() => {
-                  // Auto-play and loop uploaded videos
-                  if (videoRef.current) {
-                    videoRef.current.currentTime = 0;
-                    videoRef.current.play();
-                  }
-                }}
-              />
-              {renderBoundingBoxes()}
-              <canvas ref={canvasRef} className="hidden" />
-            </>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <Camera className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-xs text-muted-foreground">No video feed</p>
-              </div>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="w-full h-full object-cover"
+            onLoadedData={() => {
+              // Auto-play and loop videos
+              if (videoRef.current) {
+                videoRef.current.currentTime = 0;
+                videoRef.current.play();
+              }
+            }}
+          />
+          {renderBoundingBoxes()}
+          <canvas ref={canvasRef} className="hidden" />
+          
+          {/* Demo badge */}
+          {feedType === 'demo' && (
+            <div className="absolute top-2 left-2">
+              <Badge variant="secondary" className="text-xs">
+                <Video className="w-3 h-3 mr-1" />
+                Demo Video
+              </Badge>
             </div>
           )}
         </div>
 
         {/* Controls */}
         <div className="space-y-2">
-          <div className="flex space-x-2">
+          <div className="grid grid-cols-4 gap-2">
             <Button
               size="sm"
               variant={feedType === 'webcam' ? 'destructive' : 'outline'}
               onClick={feedType === 'webcam' ? stopWebcam : startWebcam}
-              className="flex-1 text-xs"
+              className="text-xs"
             >
               <Camera className="w-3 h-3 mr-1" />
-              {feedType === 'webcam' ? 'Stop' : 'Webcam'}
+              {feedType === 'webcam' ? 'Stop' : 'Cam'}
             </Button>
             
             <Button
               size="sm"
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              className="flex-1 text-xs"
+              className="text-xs"
             >
               <Upload className="w-3 h-3 mr-1" />
               Upload
             </Button>
+
+            <Button
+              size="sm"
+              variant={showUrlInput ? 'secondary' : 'outline'}
+              onClick={() => setShowUrlInput(!showUrlInput)}
+              className="text-xs"
+            >
+              <Link2 className="w-3 h-3 mr-1" />
+              URL
+            </Button>
+
+            <Button
+              size="sm"
+              variant={feedType === 'demo' ? 'default' : 'outline'}
+              onClick={resetToDemo}
+              className="text-xs"
+              disabled={feedType === 'demo'}
+            >
+              <Video className="w-3 h-3 mr-1" />
+              Demo
+            </Button>
           </div>
+
+          {/* URL Input */}
+          {showUrlInput && (
+            <div className="space-y-2 pt-2 border-t">
+              <Label htmlFor="stream-url" className="text-xs">Stream URL or Video URL</Label>
+              <div className="flex space-x-2">
+                <Input
+                  id="stream-url"
+                  type="text"
+                  placeholder="https://example.com/stream.m3u8"
+                  value={streamUrl}
+                  onChange={(e) => setStreamUrl(e.target.value)}
+                  className="text-xs h-8"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleUrlSubmit}
+                  disabled={!streamUrl}
+                  className="text-xs h-8"
+                >
+                  Load
+                </Button>
+              </div>
+            </div>
+          )}
           
           <Input
             ref={fileInputRef}
