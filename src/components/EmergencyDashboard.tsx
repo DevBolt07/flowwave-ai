@@ -3,11 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Navigation, AlertTriangle, MapPin, Clock, Route, Hospital as HospitalIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Navigation, AlertTriangle, MapPin, Clock, Route, Hospital as HospitalIcon, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { VideoFeed } from "./VideoFeed";
 import { EmergencyMap, Hospital } from "./EmergencyMap";
 import { getHospitals, getAmbulances } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
+import { useRealtimeData } from "@/hooks/useRealtimeData";
 
 interface EmergencyDashboardProps {
   onBack: () => void;
@@ -21,7 +25,9 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
   const [ambulances, setAmbulances] = useState<any[]>([]);
   const [patientLocation, setPatientLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
+  const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
   const { toast } = useToast();
+  const { intersections, getLanesByIntersection } = useRealtimeData();
 
   useEffect(() => {
     loadMapData();
@@ -35,6 +41,10 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
     setHospitals(hospitalsData as Hospital[]);
     setAmbulances(ambulancesData);
   };
+  
+  const selectedIntersectionLanes = selectedIntersection 
+    ? getLanesByIntersection(selectedIntersection)
+    : [];
   
   const handleDestinationSubmit = () => {
     if (destination.trim()) {
@@ -256,27 +266,88 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
         </div>
 
         {/* Live Emergency Map */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <MapPin className="w-5 h-5" />
-              <span>Emergency Response Map</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EmergencyMap
-              hospitals={hospitals}
-              ambulances={ambulances}
-              center={[12.9716, 77.5946]}
-              zoom={12}
-              className="h-[500px] w-full rounded-lg overflow-hidden border"
-              allowPatientSelection={corridorStatus === 'idle'}
-              onPatientLocationSelect={handlePatientLocationSelect}
-              onNearestHospitalFound={handleNearestHospitalFound}
-              showRoute={patientLocation !== null}
-            />
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="map" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="map">
+              <MapPin className="w-4 h-4 mr-2" />
+              Map
+            </TabsTrigger>
+            <TabsTrigger value="video">
+              <Video className="w-4 h-4 mr-2" />
+              Live Feeds
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="map">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MapPin className="w-5 h-5" />
+                  <span>Emergency Response Map</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EmergencyMap
+                  hospitals={hospitals}
+                  ambulances={ambulances}
+                  center={[12.9716, 77.5946]}
+                  zoom={12}
+                  className="h-[500px] w-full rounded-lg overflow-hidden border"
+                  allowPatientSelection={corridorStatus === 'idle'}
+                  onPatientLocationSelect={handlePatientLocationSelect}
+                  onNearestHospitalFound={handleNearestHospitalFound}
+                  showRoute={patientLocation !== null}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="video">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Video className="w-5 h-5" />
+                  <span>Live Video Feeds</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Select Intersection</label>
+                  <Select value={selectedIntersection || ""} onValueChange={setSelectedIntersection}>
+                    <SelectTrigger className="max-w-md">
+                      <SelectValue placeholder="Choose intersection..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {intersections.map((intersection) => (
+                        <SelectItem key={intersection.id} value={intersection.id}>
+                          {intersection.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedIntersection && selectedIntersectionLanes.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {selectedIntersectionLanes.map((lane) => (
+                      <VideoFeed
+                        key={lane.id}
+                        intersectionId={selectedIntersection}
+                        direction={lane.direction as any}
+                        readOnly={true}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Video className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">Select an intersection to view live video feeds</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Hospital Details */}
         {selectedHospital && patientLocation && (

@@ -7,11 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { IntersectionCard } from "./IntersectionCard";
 import { TrafficLight } from "./TrafficLight";
 import { VideoFeed } from "./VideoFeed";
-import { ArrowLeft, Shield, Settings, Play, Square, AlertTriangle, Eye, Car, Zap, Map as MapIcon } from "lucide-react";
+import { ArrowLeft, Shield, Settings, AlertTriangle, Eye, Zap, Map as MapIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeData } from "@/hooks/useRealtimeData";
-import { DetectionResult, calculateGST } from "@/lib/api";
 import { MapView, MapIntersection } from "./MapView";
 
 interface AuthorityDashboardProps {
@@ -21,14 +20,6 @@ interface AuthorityDashboardProps {
 export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'control' | 'config' | 'video' | 'map'>('map');
-  const [detectionRunning, setDetectionRunning] = useState(true);
-  const [detectionModel, setDetectionModel] = useState<'yolov8' | 'rt-detr' | 'yolo-nas' | 'pp-yoloe'>('yolov8');
-  const [gstConfig, setGstConfig] = useState({
-    min_gst: 10,
-    max_gst: 120,
-    base_time: 15,
-    vehicle_factor: 2.5,
-  });
   
   const { toast } = useToast();
   const {
@@ -85,54 +76,6 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
     }
   };
 
-  const handleDetectionToggle = () => {
-    setDetectionRunning(!detectionRunning);
-    toast({
-      title: detectionRunning ? "Detection Stopped" : "Detection Started", 
-      description: detectionRunning ? "AI vehicle detection paused" : "AI vehicle detection active",
-      variant: detectionRunning ? 'destructive' : 'default'
-    });
-  };
-
-  const handleDetectionUpdate = async (intersectionId: string, result: DetectionResult) => {
-    try {
-      // Update lane counts based on detection results
-      const intersection = intersections.find(i => i.id === intersectionId);
-      const config = intersection?.config as any;
-      
-      if (config) {
-        // Calculate GST for each lane
-        const gstResults = await calculateGST(intersectionId, result.lane_counts, config);
-        
-        // Update lanes with new counts and GST
-        const intersectionLanes = getLanesByIntersection(intersectionId);
-        for (const lane of intersectionLanes) {
-          const direction = lane.direction.toLowerCase() as keyof typeof result.lane_counts;
-          const newCount = result.lane_counts[direction] || 0;
-          const gstResult = gstResults.find(g => g.direction === lane.direction);
-          
-          await updateLane(lane.id, {
-            vehicle_count: newCount,
-            gst_time: gstResult?.gst_time || lane.gst_time,
-          });
-        }
-        
-        // Log detection update
-        await createLog({
-          intersection_id: intersectionId,
-          event_type: 'detection_update',
-          message: `Vehicle detection updated: ${result.total_vehicles} total vehicles`,
-          metadata: { 
-            lane_counts: result.lane_counts, 
-            confidence: result.confidence,
-            model: detectionModel,
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Failed to process detection update:', error);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -151,19 +94,6 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
               </div>
             </div>
             
-            <div className="flex items-center space-x-3">
-              <Badge variant={detectionRunning ? 'default' : 'secondary'}>
-                <Eye className="w-4 h-4 mr-2" />
-                Detection {detectionRunning ? 'Active' : 'Paused'}
-              </Badge>
-              <Button
-                variant={detectionRunning ? 'destructive' : 'default'}
-                size="sm"
-                onClick={handleDetectionToggle}
-              >
-                {detectionRunning ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -341,8 +271,8 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                       <div className="text-xs text-muted-foreground">Vehicles Detected</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-accent">92%</div>
-                      <div className="text-xs text-muted-foreground">Detection Accuracy</div>
+                      <div className="text-2xl font-bold text-accent">{lanes.length}</div>
+                      <div className="text-xs text-muted-foreground">Total Lanes</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-emergency">{activeEmergencies.length}</div>
@@ -352,38 +282,6 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                 </CardContent>
               </Card>
 
-              {selectedIntersectionData && (
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle className="text-base">Detection Feed</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="aspect-video bg-muted rounded flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
-                        <div className="text-center">
-                          <Car className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                          <p className="text-xs text-muted-foreground">Live Detection Feed</p>
-                          <p className="text-xs text-muted-foreground">{selectedIntersectionData.name}</p>
-                        </div>
-                      </div>
-                      <div className="text-xs space-y-1">
-                        <div className="flex justify-between">
-                          <span>Model:</span>
-                          <span className="font-mono">{detectionModel.toUpperCase()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Status:</span>
-                          <span className="font-mono">{detectionRunning ? 'Active' : 'Paused'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Lanes:</span>
-                          <span className="font-mono">{selectedIntersectionLanes.length}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
         )}
@@ -429,9 +327,6 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                           key={lane.id}
                           intersectionId={selectedIntersection}
                           direction={lane.direction as any}
-                          onDetectionUpdate={(result) => handleDetectionUpdate(selectedIntersection, result)}
-                          detectionModel={detectionModel}
-                          isActive={detectionRunning}
                         />
                       ))}
                     </div>
@@ -540,105 +435,33 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
 
         {/* Config Tab */}
         {activeTab === 'config' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Detection Configuration</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Detection Model</label>
-                  <Select value={detectionModel} onValueChange={(value: any) => setDetectionModel(value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yolov8">YOLOv8 (Recommended)</SelectItem>
-                      <SelectItem value="rt-detr">RT-DETR</SelectItem>
-                      <SelectItem value="yolo-nas">YOLO-NAS</SelectItem>
-                      <SelectItem value="pp-yoloe">PP-YOLOE+</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Min GST (seconds)</label>
-                    <Input
-                      type="number"
-                      value={gstConfig.min_gst}
-                      onChange={(e) => setGstConfig(prev => ({ ...prev, min_gst: parseInt(e.target.value) }))}
-                      min="5"
-                      max="60"
-                    />
+          <Card>
+            <CardHeader>
+              <CardTitle>System Configuration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <div className="text-lg font-bold text-primary">{intersections.length}</div>
+                    <div className="text-xs text-muted-foreground">Active Intersections</div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Max GST (seconds)</label>
-                    <Input
-                      type="number"
-                      value={gstConfig.max_gst}
-                      onChange={(e) => setGstConfig(prev => ({ ...prev, max_gst: parseInt(e.target.value) }))}
-                      min="60"
-                      max="300"
-                    />
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <div className="text-lg font-bold text-secondary">Live</div>
+                    <div className="text-xs text-muted-foreground">Video Feeds</div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Base Time (seconds)</label>
-                    <Input
-                      type="number"
-                      value={gstConfig.base_time}
-                      onChange={(e) => setGstConfig(prev => ({ ...prev, base_time: parseInt(e.target.value) }))}
-                      min="10"
-                      max="60"
-                    />
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <div className="text-lg font-bold text-accent">{lanes.length}</div>
+                    <div className="text-xs text-muted-foreground">Total Lanes</div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">Vehicle Factor</label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      value={gstConfig.vehicle_factor}
-                      onChange={(e) => setGstConfig(prev => ({ ...prev, vehicle_factor: parseFloat(e.target.value) }))}
-                      min="1.0"
-                      max="5.0"
-                    />
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <div className="text-lg font-bold text-emergency">{activeEmergencies.length}</div>
+                    <div className="text-xs text-muted-foreground">Active Emergencies</div>
                   </div>
                 </div>
-
-                <Button className="w-full">
-                  Save Configuration
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>System Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-bold text-primary">Active</div>
-                      <div className="text-xs text-muted-foreground">AI Detection</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-bold text-secondary">Live</div>
-                      <div className="text-xs text-muted-foreground">Video Feeds</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-bold text-accent">30 FPS</div>
-                      <div className="text-xs text-muted-foreground">Processing Rate</div>
-                    </div>
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-lg font-bold text-emergency">~45ms</div>
-                      <div className="text-xs text-muted-foreground">Latency</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

@@ -18,9 +18,6 @@ interface VideoFeedManagerProps {
     vehicle_count: number | null;
     signal_state: 'red' | 'green' | 'amber' | null;
   }>;
-  detectionModel: 'yolov8' | 'rt-detr' | 'yolo-nas' | 'pp-yoloe';
-  isDetectionActive: boolean;
-  onDetectionUpdate?: (intersectionId: string, result: any) => void;
 }
 
 interface VideoFeedData {
@@ -34,10 +31,7 @@ interface VideoFeedData {
 export const VideoFeedManager = ({
   intersectionId,
   intersectionName,
-  lanes,
-  detectionModel,
-  isDetectionActive,
-  onDetectionUpdate
+  lanes
 }: VideoFeedManagerProps) => {
   const [videoFeeds, setVideoFeeds] = useState<VideoFeedData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,20 +116,14 @@ export const VideoFeedManager = ({
               <CardTitle>Video Feed Manager</CardTitle>
               <p className="text-sm text-muted-foreground">{intersectionName}</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant={isDetectionActive ? 'default' : 'secondary'}>
-                <Eye className="w-4 h-4 mr-2" />
-                Detection {isDetectionActive ? 'Active' : 'Inactive'}
-              </Badge>
-              <Button
-                size="sm"
-                variant={showUploader ? 'secondary' : 'outline'}
-                onClick={() => setShowUploader(!showUploader)}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                {showUploader ? 'Hide' : 'Manage'} Feeds
-              </Button>
-            </div>
+            <Button
+              size="sm"
+              variant={showUploader ? 'secondary' : 'outline'}
+              onClick={() => setShowUploader(!showUploader)}
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              {showUploader ? 'Hide' : 'Manage'} Feeds
+            </Button>
           </div>
         </CardHeader>
       </Card>
@@ -185,11 +173,6 @@ export const VideoFeedManager = ({
                 <VideoFeed
                   intersectionId={intersectionId}
                   direction={lane.direction as any}
-                  onDetectionUpdate={(result) => {
-                    onDetectionUpdate?.(intersectionId, result);
-                  }}
-                  detectionModel={detectionModel}
-                  isActive={isDetectionActive}
                 />
               ) : (
                 <Card>
@@ -231,8 +214,8 @@ export const VideoFeedManager = ({
               <div className="text-xs text-muted-foreground">Total Vehicles</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-emergency">{detectionModel.toUpperCase()}</div>
-              <div className="text-xs text-muted-foreground">AI Model</div>
+              <div className="text-lg font-bold text-emergency">{lanes.length}</div>
+              <div className="text-xs text-muted-foreground">Total Lanes</div>
             </div>
           </div>
         </CardContent>

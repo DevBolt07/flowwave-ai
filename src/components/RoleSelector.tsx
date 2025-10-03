@@ -15,10 +15,9 @@ interface Role {
 
 interface RoleSelectorProps {
   onRoleSelect: (role: Role['id']) => void;
-  onShowDemo?: () => void;
 }
 
-export const RoleSelector = ({ onRoleSelect, onShowDemo }: RoleSelectorProps) => {
+export const RoleSelector = ({ onRoleSelect }: RoleSelectorProps) => {
   const { profile, signOut } = useAuth();
   
   const handleSignOut = async () => {
@@ -128,17 +127,6 @@ export const RoleSelector = ({ onRoleSelect, onShowDemo }: RoleSelectorProps) =>
                 >
                   Access Dashboard
                 </Button>
-                
-                {onShowDemo && role.id === 'authority' && (
-                  <Button 
-                    onClick={onShowDemo}
-                    variant="outline"
-                    className="w-full mt-2"
-                    size="lg"
-                  >
-                    🎬 Launch Detection Demo
-                  </Button>
-                )}
               </CardContent>
             </Card>
           ))}
