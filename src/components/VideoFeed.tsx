@@ -4,16 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Camera, Upload, Link2, Video } from 'lucide-react';
+import { Camera, Upload, Link2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Sample demo videos that loop by default
-const DEMO_VIDEOS = [
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4'
-];
 
 interface VideoFeedProps {
   intersectionId: string;
@@ -26,7 +18,7 @@ export const VideoFeed = ({
   direction,
   readOnly = false,
 }: VideoFeedProps) => {
-  const [feedType, setFeedType] = useState<'demo' | 'webcam' | 'upload' | 'url'>('demo');
+  const [feedType, setFeedType] = useState<'webcam' | 'upload' | 'url' | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [streamUrl, setStreamUrl] = useState('');
@@ -36,20 +28,6 @@ export const VideoFeed = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
-
-  // Get demo video based on direction
-  const getDemoVideoUrl = () => {
-    const directionMap = { 'North': 0, 'South': 1, 'East': 2, 'West': 3 };
-    return DEMO_VIDEOS[directionMap[direction]];
-  };
-
-  // Load demo video on mount
-  useEffect(() => {
-    if (videoRef.current && feedType === 'demo') {
-      videoRef.current.src = getDemoVideoUrl();
-      videoRef.current.load();
-    }
-  }, []);
 
   const startWebcam = useCallback(async () => {
     try {
@@ -89,14 +67,13 @@ export const VideoFeed = ({
       setStream(null);
     }
     setIsRecording(false);
-    setFeedType('demo');
+    setFeedType(null);
 
-    // Return to demo video
     if (videoRef.current) {
-      videoRef.current.src = getDemoVideoUrl();
-      videoRef.current.load();
+      videoRef.current.srcObject = null;
+      videoRef.current.src = '';
     }
-  }, [stream, direction]);
+  }, [stream]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -127,27 +104,6 @@ export const VideoFeed = ({
     }
   }, [streamUrl, direction, toast]);
 
-  const resetToDemo = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    setIsRecording(false);
-    setFeedType('demo');
-    setStreamUrl('');
-    setShowUrlInput(false);
-    
-    if (videoRef.current) {
-      videoRef.current.src = getDemoVideoUrl();
-      videoRef.current.load();
-    }
-    
-    toast({
-      title: "Demo Video Restored",
-      description: `Showing demo video for ${direction} lane`,
-    });
-  }, [stream, direction, toast]);
-
   useEffect(() => {
     return () => {
       if (stream) {
@@ -170,29 +126,25 @@ export const VideoFeed = ({
       <CardContent className="space-y-3">
         {/* Video Feed */}
         <div className="relative aspect-video bg-muted rounded overflow-hidden">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full h-full object-cover"
-            onLoadedData={() => {
-              // Auto-play and loop videos
-              if (videoRef.current) {
-                videoRef.current.currentTime = 0;
-                videoRef.current.play();
-              }
-            }}
-          />
-          
-          {/* Demo badge */}
-          {feedType === 'demo' && (
-            <div className="absolute top-2 left-2">
-              <Badge variant="secondary" className="text-xs">
-                <Video className="w-3 h-3 mr-1" />
-                Demo Video
-              </Badge>
+          {feedType ? (
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover"
+              onLoadedData={() => {
+                // Auto-play and loop videos
+                if (videoRef.current) {
+                  videoRef.current.currentTime = 0;
+                  videoRef.current.play();
+                }
+              }}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <p className="text-sm">No video feed active</p>
             </div>
           )}
         </div>
@@ -200,7 +152,7 @@ export const VideoFeed = ({
         {/* Controls */}
         {!readOnly && (
           <div className="space-y-2">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 size="sm"
                 variant={feedType === 'webcam' ? 'destructive' : 'outline'}
@@ -229,17 +181,6 @@ export const VideoFeed = ({
               >
                 <Link2 className="w-3 h-3 mr-1" />
                 URL
-              </Button>
-
-              <Button
-                size="sm"
-                variant={feedType === 'demo' ? 'default' : 'outline'}
-                onClick={resetToDemo}
-                className="text-xs"
-                disabled={feedType === 'demo'}
-              >
-                <Video className="w-3 h-3 mr-1" />
-                Demo
               </Button>
             </div>
 
