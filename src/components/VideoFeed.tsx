@@ -75,7 +75,7 @@ export const VideoFeed = ({
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && videoRef.current) {
+    if (file) {
       // Stop webcam if running
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -83,17 +83,24 @@ export const VideoFeed = ({
       }
       setIsRecording(false);
       
-      // Clear srcObject and set src for file
-      videoRef.current.srcObject = null;
-      const url = URL.createObjectURL(file);
-      videoRef.current.src = url;
-      videoRef.current.load();
+      // Set feed type first to show video element
       setFeedType('upload');
       
-      // Auto-play the uploaded video
-      videoRef.current.play().catch(err => {
-        console.log('Auto-play prevented:', err);
-      });
+      // Then set up the video source
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+        const url = URL.createObjectURL(file);
+        videoRef.current.src = url;
+        
+        // Wait for video to load before playing
+        videoRef.current.onloadeddata = () => {
+          videoRef.current?.play().catch(err => {
+            console.log('Auto-play prevented:', err);
+          });
+        };
+        
+        videoRef.current.load();
+      }
       
       toast({
         title: "Video Uploaded",
