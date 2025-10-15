@@ -78,7 +78,7 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background safe-top">
       {/* Header */}
       <div className="border-b bg-card">
         <div className="max-w-7xl mx-auto px-6 py-4">

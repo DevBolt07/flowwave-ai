@@ -153,6 +153,20 @@
   }
 }
 
+@layer utilities {
+  /* Safe area padding for WebView/Mobile - adds top padding to prevent header overlap */
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+  }
+  
+  /* Additional padding for mobile viewports */
+  @media (max-width: 768px) {
+    .safe-top {
+      padding-top: max(env(safe-area-inset-top), 3rem);
+    }
+  }
+}
+
 @keyframes traffic-pulse {
   0%, 100% {
     opacity: 1;

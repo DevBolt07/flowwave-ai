@@ -71,7 +71,7 @@ export const RoleSelector = ({ onRoleSelect }: RoleSelectorProps) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-6 safe-top">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <div className="flex items-center justify-between mb-6">
