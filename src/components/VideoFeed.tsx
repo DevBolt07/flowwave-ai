@@ -67,31 +67,52 @@ export const VideoFeed = ({
       setStream(null);
     }
     setIsRecording(false);
-    setFeedType(null);
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
-      videoRef.current.src = '';
     }
   }, [stream]);
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && videoRef.current) {
+      // Stop webcam if running
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+      setIsRecording(false);
+      
+      // Clear srcObject and set src for file
+      videoRef.current.srcObject = null;
       const url = URL.createObjectURL(file);
       videoRef.current.src = url;
       videoRef.current.load();
       setFeedType('upload');
+      
+      // Auto-play the uploaded video
+      videoRef.current.play().catch(err => {
+        console.log('Auto-play prevented:', err);
+      });
       
       toast({
         title: "Video Uploaded",
         description: `Video file loaded for ${direction} lane`,
       });
     }
-  }, [direction, toast]);
+  }, [stream, direction, toast]);
 
   const handleUrlSubmit = useCallback(() => {
     if (streamUrl && videoRef.current) {
+      // Stop webcam if running
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+      setIsRecording(false);
+      
+      // Clear srcObject and set src for URL
+      videoRef.current.srcObject = null;
       videoRef.current.src = streamUrl;
       videoRef.current.load();
       setFeedType('url');
@@ -102,7 +123,7 @@ export const VideoFeed = ({
         description: `Stream loaded for ${direction} lane`,
       });
     }
-  }, [streamUrl, direction, toast]);
+  }, [streamUrl, stream, direction, toast]);
 
   useEffect(() => {
     return () => {
@@ -172,6 +193,14 @@ export const VideoFeed = ({
                 <Upload className="w-3 h-3 mr-1" />
                 Upload
               </Button>
+              
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
 
               <Button
                 size="sm"
@@ -208,14 +237,6 @@ export const VideoFeed = ({
                 </div>
               </div>
             )}
-            
-            <Input
-              ref={fileInputRef}
-              type="file"
-              accept="video/*"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
           </div>
         )}
       </CardContent>
