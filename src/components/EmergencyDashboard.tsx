@@ -1,36 +1,34 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Navigation, AlertTriangle, MapPin, Clock, Route, Hospital as HospitalIcon, Video } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ArrowLeft, Navigation, AlertTriangle, MapPin, Video, Activity, Ambulance } from "lucide-react";
 import { VideoFeed } from "./VideoFeed";
 import { EmergencyMap, Hospital } from "./EmergencyMap";
 import { getHospitals, getAmbulances } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeData } from "@/hooks/useRealtimeData";
+import { useEmergencySimulation } from "@/hooks/useEmergencySimulation";
+import { initializeSimulatedAmbulances } from "@/lib/ambulance-simulation";
 
 interface EmergencyDashboardProps {
   onBack: () => void;
 }
 
 export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
-  const [destination, setDestination] = useState("");
-  const [routeActive, setRouteActive] = useState(false);
-  const [corridorStatus, setCorridorStatus] = useState<'idle' | 'requesting' | 'active'>('idle');
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [ambulances, setAmbulances] = useState<any[]>([]);
-  const [patientLocation, setPatientLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
+  const [simulationInitialized, setSimulationInitialized] = useState(false);
   const { toast } = useToast();
   const { intersections, getLanesByIntersection } = useRealtimeData();
+  const { state: emergencyState, startEmergency, endEmergency, useOSRM, setUseOSRM } = useEmergencySimulation();
 
   useEffect(() => {
     loadMapData();
+    initializeSimulation();
   }, []);
 
   const loadMapData = async () => {
@@ -41,51 +39,44 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
     setHospitals(hospitalsData as Hospital[]);
     setAmbulances(ambulancesData);
   };
+
+  const initializeSimulation = async () => {
+    try {
+      const existingAmbulances = await getAmbulances();
+      if (!existingAmbulances || existingAmbulances.length < 5) {
+        await initializeSimulatedAmbulances(8);
+        await loadMapData();
+        toast({
+          title: "Simulation Initialized",
+          description: "8 ambulances deployed in Kothrud, Pune",
+        });
+      }
+      setSimulationInitialized(true);
+    } catch (error) {
+      console.error('Failed to initialize simulation:', error);
+    }
+  };
   
   const selectedIntersectionLanes = selectedIntersection 
     ? getLanesByIntersection(selectedIntersection)
     : [];
   
-  const handleDestinationSubmit = () => {
-    if (destination.trim()) {
-      setCorridorStatus('requesting');
-      setTimeout(() => {
-        setCorridorStatus('active');
-        setRouteActive(true);
-      }, 2000);
+  const handlePatientLocationSelect = async (lat: number, lng: number) => {
+    if (emergencyState.isActive) {
+      toast({
+        title: "Emergency Already Active",
+        description: "Please complete the current emergency first",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Start emergency response
+    await startEmergency([lat, lng]);
   };
 
-  const handleSkipDestination = () => {
-    setCorridorStatus('requesting');
-    setTimeout(() => {
-      setCorridorStatus('active');
-    }, 1500);
-  };
-
-  const handleEndCorridor = () => {
-    setCorridorStatus('idle');
-    setRouteActive(false);
-    setDestination("");
-    setPatientLocation(null);
-    setSelectedHospital(null);
-  };
-
-  const handlePatientLocationSelect = (lat: number, lng: number) => {
-    setPatientLocation({ lat, lng });
-    toast({
-      title: "Patient Location Set",
-      description: `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-    });
-  };
-
-  const handleNearestHospitalFound = (hospital: Hospital, distance: number) => {
-    setSelectedHospital(hospital);
-    toast({
-      title: "Nearest Hospital Found",
-      description: `${hospital.name} - ${distance.toFixed(2)} km away`,
-      variant: "default",
-    });
+  const handleEndEmergency = async () => {
+    await endEmergency();
   };
 
   return (
@@ -105,14 +96,30 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
               </div>
             </div>
             
-            <Badge 
-              variant={corridorStatus === 'active' ? 'destructive' : 'secondary'}
-              className={corridorStatus === 'active' ? 'emergency-flash' : ''}
-            >
-              <AlertTriangle className="w-4 h-4 mr-2" />
-              {corridorStatus === 'idle' ? 'Standby' : 
-               corridorStatus === 'requesting' ? 'Requesting' : 'Corridor Active'}
-            </Badge>
+            <div className="flex items-center gap-4">
+              <Badge 
+                variant={emergencyState.isActive ? 'destructive' : 'secondary'}
+                className={emergencyState.isActive ? 'emergency-flash' : ''}
+              >
+                <AlertTriangle className="w-4 h-4 mr-2" />
+                {emergencyState.phase === 'idle' ? 'Standby' : 
+                 emergencyState.phase === 'dispatching' ? 'Dispatching' : 
+                 emergencyState.phase === 'en_route_to_patient' ? 'En Route to Patient' :
+                 emergencyState.phase === 'transporting' ? 'Transporting' : 'Active'}
+              </Badge>
+              
+              <div className="text-sm text-muted-foreground">
+                Routing: {useOSRM ? 'OSRM' : 'Mock'} 
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setUseOSRM(!useOSRM)}
+                  className="ml-2 h-6 text-xs"
+                >
+                  Switch
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -124,88 +131,82 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Navigation className="w-5 h-5 text-emergency" />
-                  <span>Emergency Green Corridor</span>
+                  <Activity className="w-5 h-5 text-emergency" />
+                  <span>Emergency Response Simulation</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {corridorStatus === 'idle' && (
-                  <>
-                    <div>
-                      <h3 className="font-medium mb-3">Option 1: Destination Route</h3>
-                      <div className="flex space-x-2">
-                        <Input
-                          placeholder="Enter destination address..."
-                          value={destination}
-                          onChange={(e) => setDestination(e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button 
-                          onClick={handleDestinationSubmit}
-                          disabled={!destination.trim()}
-                          variant="destructive"
-                        >
-                          Request Corridor
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        System will calculate shortest-time route and activate sequential green signals
-                      </p>
-                    </div>
+                {emergencyState.phase === 'idle' && (
+                  <div>
+                    <h3 className="font-medium mb-3">Start Emergency Simulation</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Click on the map below to set patient location. The system will:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-2 mb-4 list-disc list-inside">
+                      <li>Find nearest available ambulance</li>
+                      <li>Calculate optimal route using {useOSRM ? 'OSRM' : 'mock routing'}</li>
+                      <li>Identify nearest hospital</li>
+                      <li>Activate green corridor for all signals on route</li>
+                      <li>Simulate real-time ambulance movement</li>
+                    </ul>
                     
-                    <div className="border-t pt-4">
-                      <h3 className="font-medium mb-3">Option 2: Immediate Priority</h3>
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          onClick={handleSkipDestination}
-                          variant="outline"
-                          className="border-emergency text-emergency hover:bg-emergency hover:text-emergency-foreground"
-                        >
-                          <AlertTriangle className="w-4 h-4 mr-2" />
-                          Priority at Current Location
-                        </Button>
+                    {!simulationInitialized && (
+                      <div className="p-3 bg-muted rounded-lg text-sm">
+                        <Activity className="w-4 h-4 inline mr-2" />
+                        Initializing simulation...
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Lane with detected emergency vehicle gets immediate green signal
-                      </p>
-                    </div>
-                  </>
+                    )}
+                  </div>
                 )}
                 
-                {corridorStatus === 'requesting' && (
+                {emergencyState.phase === 'dispatching' && (
                   <div className="text-center py-8">
                     <div className="w-16 h-16 border-4 border-emergency border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <h3 className="font-medium mb-2">Processing Emergency Request</h3>
+                    <h3 className="font-medium mb-2">Dispatching Ambulance</h3>
                     <p className="text-sm text-muted-foreground">
-                      {destination ? 'Calculating optimal route...' : 'Detecting current position...'}
+                      Finding nearest ambulance and calculating route...
                     </p>
                   </div>
                 )}
                 
-                {corridorStatus === 'active' && (
+                {emergencyState.isActive && emergencyState.phase !== 'dispatching' && (
                   <div className="space-y-4">
                     <div className="p-4 bg-emergency/10 border border-emergency/20 rounded">
-                      <div className="flex items-center space-x-2 text-emergency mb-2">
+                      <div className="flex items-center space-x-2 text-emergency mb-3">
                         <AlertTriangle className="w-5 h-5" />
                         <span className="font-medium">Green Corridor Active</span>
                       </div>
-                      {routeActive ? (
-                        <p className="text-sm">
-                          Route to <strong>{destination}</strong> is being cleared. Follow navigation prompts.
-                        </p>
-                      ) : (
-                        <p className="text-sm">
-                          Priority green signal activated at current intersection.
-                        </p>
-                      )}
+                      
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Ambulance:</span>
+                          <span className="font-mono">{emergencyState.ambulance?.vehicle_id}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Hospital:</span>
+                          <span className="font-medium">{emergencyState.hospitalLocation?.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Signals Cleared:</span>
+                          <span className="font-mono">{emergencyState.affectedSignals.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total Distance:</span>
+                          <span className="font-mono">{emergencyState.distanceKm} km</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">ETA:</span>
+                          <span className="font-mono text-secondary">{emergencyState.eta} min</span>
+                        </div>
+                      </div>
                     </div>
                     
                     <Button 
-                      onClick={handleEndCorridor}
+                      onClick={handleEndEmergency}
                       variant="outline"
                       className="w-full"
                     >
-                      End Emergency Corridor
+                      End Emergency
                     </Button>
                   </div>
                 )}
@@ -217,45 +218,50 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle>Emergency Status</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Ambulance className="w-5 h-5" />
+                  Fleet Status
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Vehicle ID</span>
-                    <span className="text-sm font-mono">AMB-001</span>
+                    <span className="text-sm text-muted-foreground">Total Ambulances</span>
+                    <span className="text-sm font-mono">{ambulances.length}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Priority Level</span>
-                    <Badge variant="destructive">CRITICAL</Badge>
+                    <span className="text-sm text-muted-foreground">Available</span>
+                    <span className="text-sm font-mono text-green-600">
+                      {ambulances.filter(a => a.status === 'available').length}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Current Location</span>
-                    <span className="text-sm">MG Road Junction</span>
+                    <span className="text-sm text-muted-foreground">En Route</span>
+                    <span className="text-sm font-mono text-amber-600">
+                      {ambulances.filter(a => a.status === 'en_route').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Hospitals</span>
+                    <span className="text-sm font-mono">{hospitals.length}</span>
                   </div>
                 </div>
                 
-                {routeActive && (
+                {emergencyState.isActive && (
                   <>
                     <div className="border-t pt-4 space-y-3">
-                      <h4 className="text-sm font-medium">Route Progress</h4>
+                      <h4 className="text-sm font-medium">Active Emergency</h4>
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Distance</span>
-                          <span className="text-sm font-mono">3.2 km</span>
+                          <span className="text-sm text-muted-foreground">Phase</span>
+                          <Badge variant="outline" className="text-xs">
+                            {emergencyState.phase.replace(/_/g, ' ')}
+                          </Badge>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">ETA</span>
-                          <span className="text-sm font-mono text-secondary">4 min</span>
+                          <span className="text-sm text-muted-foreground">Route Type</span>
+                          <span className="text-xs">{useOSRM ? 'OSRM Real' : 'Simulated'}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Signals Cleared</span>
-                          <span className="text-sm font-mono">2/5</span>
-                        </div>
-                      </div>
-                      
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div className="bg-secondary h-2 rounded-full transition-all duration-1000" style={{width: '40%'}}></div>
                       </div>
                     </div>
                   </>
@@ -290,13 +296,15 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
                 <EmergencyMap
                   hospitals={hospitals}
                   ambulances={ambulances}
-                  center={[12.9716, 77.5946]}
-                  zoom={12}
-                  className="h-[500px] w-full rounded-lg overflow-hidden border"
-                  allowPatientSelection={corridorStatus === 'idle'}
+                  center={[18.5074, 73.8077]} 
+                  zoom={13}
+                  className="h-[600px] w-full rounded-lg overflow-hidden border"
+                  allowPatientSelection={!emergencyState.isActive}
                   onPatientLocationSelect={handlePatientLocationSelect}
-                  onNearestHospitalFound={handleNearestHospitalFound}
-                  showRoute={patientLocation !== null}
+                  emergencyRoute={emergencyState.leg1Route && emergencyState.leg2Route 
+                    ? [...emergencyState.leg1Route, ...emergencyState.leg2Route] 
+                    : null}
+                  affectedSignals={emergencyState.affectedSignals}
                 />
               </CardContent>
             </Card>
@@ -349,57 +357,31 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
           </TabsContent>
         </Tabs>
 
-        {/* Hospital Details */}
-        {selectedHospital && patientLocation && (
+        {/* Simulation Info */}
+        {emergencyState.affectedSignals.length > 0 && (
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <HospitalIcon className="w-5 h-5 text-secondary" />
-                <span>Selected Hospital Details</span>
+                <Activity className="w-5 h-5 text-secondary" />
+                <span>Green Corridor Details</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent>
+              <div className="space-y-3">
                 <div>
-                  <div className="text-sm text-muted-foreground">Hospital Name</div>
-                  <div className="font-medium">{selectedHospital.name}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Available Beds</div>
-                  <div className="font-medium">{selectedHospital.available_beds || 'N/A'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Contact</div>
-                  <div className="font-medium text-sm">{selectedHospital.contact_number || 'N/A'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Specialties</div>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedHospital.specialties?.slice(0, 3).map((spec) => (
-                      <Badge key={spec} variant="outline" className="text-xs">
-                        {spec}
-                      </Badge>
+                  <div className="text-sm text-muted-foreground mb-2">Affected Traffic Signals</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {emergencyState.affectedSignals.map((signal) => (
+                      <div key={signal.id} className="p-2 bg-muted rounded text-sm">
+                        <div className="font-medium">{signal.name}</div>
+                        <Badge variant="outline" className="mt-1 text-xs">
+                          Status: GREEN
+                        </Badge>
+                      </div>
                     ))}
                   </div>
                 </div>
               </div>
-              {selectedHospital.address && (
-                <div>
-                  <div className="text-sm text-muted-foreground">Address</div>
-                  <div className="text-sm">{selectedHospital.address}</div>
-                </div>
-              )}
-              <Button 
-                onClick={() => {
-                  setDestination(selectedHospital.name);
-                  handleDestinationSubmit();
-                }}
-                variant="destructive"
-                className="w-full"
-              >
-                <Navigation className="w-4 h-4 mr-2" />
-                Start Emergency Route to Hospital
-              </Button>
             </CardContent>
           </Card>
         )}

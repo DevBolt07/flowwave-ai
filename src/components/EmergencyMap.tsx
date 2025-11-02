@@ -67,6 +67,13 @@ interface EmergencyMapProps {
   onPatientLocationSelect?: (lat: number, lng: number) => void;
   onNearestHospitalFound?: (hospital: Hospital, distance: number) => void;
   showRoute?: boolean;
+  emergencyRoute?: [number, number][] | null;
+  affectedSignals?: Array<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+  }>;
 }
 
 // Component to handle map clicks
@@ -111,6 +118,8 @@ export const EmergencyMap = ({
   onPatientLocationSelect,
   onNearestHospitalFound,
   showRoute = false,
+  emergencyRoute = null,
+  affectedSignals = [],
 }: EmergencyMapProps) => {
   const [patientLocation, setPatientLocation] = useState<[number, number] | null>(null);
   const [nearestHospital, setNearestHospital] = useState<Hospital | null>(null);
@@ -357,6 +366,37 @@ export const EmergencyMap = ({
               dashArray="10, 10"
             />
           )}
+
+          {/* Emergency Route */}
+          {emergencyRoute && emergencyRoute.length > 0 && (
+            <Polyline
+              positions={emergencyRoute}
+              color="#ef4444"
+              weight={5}
+              opacity={0.8}
+            />
+          )}
+
+          {/* Affected Signal Markers */}
+          {affectedSignals.map((signal) => (
+            <Marker
+              key={signal.id}
+              position={[signal.latitude, signal.longitude]}
+              icon={createIcon('data:image/svg+xml;base64,' + btoa(`
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#22c55e" stroke="white" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" fill="#22c55e"/>
+                  <circle cx="12" cy="12" r="6" fill="#10b981"/>
+                </svg>
+              `), [25, 25])}
+            >
+              <Popup>
+                <div className="text-sm">
+                  <strong className="text-green-600">Green Corridor Active</strong>
+                  <div className="text-xs">{signal.name}</div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
       </div>
 
