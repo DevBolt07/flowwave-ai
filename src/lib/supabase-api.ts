@@ -2,9 +2,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
-type Intersection = Database['public']['Tables']['intersections']['Row'];
-type Hospital = Database['public']['Tables']['hospitals']['Row'];
-type Ambulance = Database['public']['Tables']['ambulances']['Row'];
+export type Intersection = Database['public']['Tables']['intersections']['Row'];
+export type Hospital = Database['public']['Tables']['hospitals']['Row'];
+export type Ambulance = Database['public']['Tables']['ambulances']['Row'];
 
 export const getIntersections = async (): Promise<Intersection[]> => {
   const { data, error } = await supabase.from('intersections').select('*');

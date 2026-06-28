@@ -10,54 +10,19 @@ import { VideoFeed } from "./VideoFeed";
 import { EmergencyMap, Hospital } from "./EmergencyMap";
 import { ArrowLeft, MapPin, AlertTriangle, Clock, Car, Map as MapIcon, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getHospitals, getAmbulances } from "@/lib/supabase-api";
+import { getHospitals, getAmbulances, Ambulance } from "@/lib/supabase-api";
 import { useRealtimeData } from "@/hooks/useRealtimeData";
 
 interface CitizenDashboardProps {
   onBack: () => void;
 }
 
-// Mock data for intersections
-const mockIntersections = [
-  {
-    id: "int-001",
-    name: "MG Road × Brigade Road",
-    lanes: [
-      { id: 1, name: "North", vehicleCount: 12, signal: 'green' as const, gstTime: 45 },
-      { id: 2, name: "South", vehicleCount: 8, signal: 'red' as const, gstTime: 0 },
-      { id: 3, name: "East", vehicleCount: 15, signal: 'red' as const, gstTime: 0 },
-      { id: 4, name: "West", vehicleCount: 6, signal: 'red' as const, gstTime: 0 }
-    ],
-    emergencyActive: false
-  },
-  {
-    id: "int-002", 
-    name: "Whitefield × ITPL Main",
-    lanes: [
-      { id: 1, name: "North", vehicleCount: 24, signal: 'red' as const, gstTime: 0 },
-      { id: 2, name: "South", vehicleCount: 18, signal: 'amber' as const, gstTime: 5 },
-      { id: 3, name: "East", vehicleCount: 9, signal: 'red' as const, gstTime: 0 },
-      { id: 4, name: "West", vehicleCount: 14, signal: 'red' as const, gstTime: 0 }
-    ],
-    emergencyActive: false
-  },
-  {
-    id: "int-003",
-    name: "Koramangala × Hosur Road", 
-    lanes: [
-      { id: 1, name: "North", vehicleCount: 31, signal: 'red' as const, gstTime: 0 },
-      { id: 2, name: "South", vehicleCount: 7, signal: 'red' as const, gstTime: 0, hasEmergency: true },
-      { id: 3, name: "East", vehicleCount: 19, signal: 'green' as const, gstTime: 28 },
-      { id: 4, name: "West", vehicleCount: 12, signal: 'red' as const, gstTime: 0 }
-    ],
-    emergencyActive: true
-  }
-];
+
 
 export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [ambulances, setAmbulances] = useState<any[]>([]);
+  const [ambulances, setAmbulances] = useState<Ambulance[]>([]);
   const { intersections, lanes, getLanesByIntersection, getActiveEmergencies } = useRealtimeData();
 
   useEffect(() => {
@@ -316,7 +281,7 @@ export const CitizenDashboard = ({ onBack }: CitizenDashboardProps) => {
                       <VideoFeed
                         key={lane.id}
                         intersectionId={selectedIntersection}
-                        direction={lane.direction as any}
+                        direction={lane.direction as 'North' | 'South' | 'East' | 'West'}
                         readOnly={true}
                       />
                     ))}

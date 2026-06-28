@@ -94,7 +94,7 @@ serve(async (req) => {
         metadata: {
           results,
           config,
-          total_vehicles: Object.values(lane_counts).reduce((sum: number, count: any) => sum + count, 0)
+          total_vehicles: Object.values(lane_counts).reduce((sum: number, count: number) => sum + count, 0)
         }
       }])
 

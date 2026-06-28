@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,8 +17,8 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, role: 'normal' | 'authority' | 'emergency') => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
+  signUp: (email: string, password: string, role: 'normal' | 'authority' | 'emergency') => Promise<{ error: AuthError | Error | null }>;
   signOut: () => Promise<void>;
   hasRole: (role: 'normal' | 'authority' | 'emergency') => boolean;
 }

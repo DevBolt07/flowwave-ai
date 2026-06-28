@@ -2,7 +2,7 @@
 // This module handles communication with a self-hosted OSRM server
 // OSRM Server URL should be configured here
 
-const OSRM_SERVER_URL = 'http://localhost:5000'; // Update this with your OSRM server URL
+const OSRM_SERVER_URL = import.meta.env.VITE_OSRM_SERVER_URL || 'http://localhost:5000'; // Configurable via environment variable
 
 export interface OSRMRoute {
   geometry: [number, number][]; // Array of [lng, lat] coordinates
