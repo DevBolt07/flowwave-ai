@@ -2,6 +2,7 @@
 // Manages ambulance entities, their positions, and real-time movement
 
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
 export type AmbulanceStatus = 'available' | 'en_route' | 'at_scene' | 'transporting' | 'returning';
 
@@ -35,7 +36,7 @@ export async function initializeSimulatedAmbulances(count: number = 8): Promise<
     lng: 73.8077,
   };
   
-  const ambulances: Partial<SimulatedAmbulance>[] = [];
+  const ambulances: Database['public']['Tables']['ambulances']['Insert'][] = [];
   
   for (let i = 0; i < count; i++) {
     // Distribute ambulances in a ~5km radius
@@ -47,15 +48,14 @@ export async function initializeSimulatedAmbulances(count: number = 8): Promise<
       status: 'available',
       current_latitude: baseCoords.lat + radius * Math.cos(angle),
       current_longitude: baseCoords.lng + radius * Math.sin(angle),
-      speed_kmh: 0,
-      heading: 0,
+      // speed_kmh is not a database column, so we exclude it or map it as needed
     });
   }
   
   // Insert ambulances into database
   const { error } = await supabase
     .from('ambulances')
-    .upsert(ambulances as any, { onConflict: 'vehicle_id' });
+    .upsert(ambulances, { onConflict: 'vehicle_id' });
   
   if (error) {
     console.error('Error initializing ambulances:', error);
@@ -126,10 +126,10 @@ export async function updateAmbulanceStatus(
 export async function updateAmbulanceLocation(
   ambulanceId: string,
   location: [number, number],
-  heading?: number,
-  speed?: number
+  _heading?: number,
+  _speed?: number
 ): Promise<void> {
-  const updates: any = {
+  const updates: Database['public']['Tables']['ambulances']['Update'] = {
     current_latitude: location[0],
     current_longitude: location[1],
     last_updated: new Date().toISOString(),

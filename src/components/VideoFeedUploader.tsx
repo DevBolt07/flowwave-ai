@@ -14,20 +14,14 @@ interface VideoFeedUploaderProps {
   onUploadComplete?: () => void;
 }
 
-interface VideoFeed {
-  id: string;
-  lane_no: number;
-  feed_url: string;
-  is_active: boolean;
-  direction: string;
-}
+
 
 export const VideoFeedUploader = ({ intersectionId, onUploadComplete }: VideoFeedUploaderProps) => {
   const [uploading, setUploading] = useState(false);
   const [selectedLane, setSelectedLane] = useState<number>(1);
   const [feedType, setFeedType] = useState<'upload' | 'rtsp'>('upload');
   const [rtspUrl, setRtspUrl] = useState('');
-  const [videoFeeds, setVideoFeeds] = useState<VideoFeed[]>([]);
+
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();

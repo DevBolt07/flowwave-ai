@@ -1,8 +1,8 @@
 // API integration utilities for Smart Traffic Management System
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD 
   ? 'https://your-backend-api.com/api' 
-  : 'http://localhost:5000/api';
+  : 'http://localhost:5000/api');
 
 export interface DetectionResult {
   bounding_boxes: Array<{
@@ -182,7 +182,7 @@ export const simulationStep = async (intersectionId: string): Promise<{ success:
 };
 
 // Fallback functions for when backend is not available
-export const mockDetectionResult = (intersectionId: string): DetectionResult => ({
+export const mockDetectionResult = (_intersectionId: string): DetectionResult => ({
   bounding_boxes: [
     { x: 100, y: 100, width: 80, height: 120, confidence: 0.92, class: 'car', lane: 1 },
     { x: 200, y: 150, width: 90, height: 110, confidence: 0.88, class: 'truck', lane: 1 },

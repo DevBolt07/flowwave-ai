@@ -39,12 +39,7 @@ export const VideoFeedManager = ({
   
   const { toast } = useToast();
 
-  // Load video feeds
-  useEffect(() => {
-    loadVideoFeeds();
-  }, [intersectionId]);
-
-  const loadVideoFeeds = async () => {
+  const loadVideoFeeds = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('video_feeds')
@@ -65,7 +60,12 @@ export const VideoFeedManager = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [intersectionId, toast]);
+
+  // Load video feeds
+  useEffect(() => {
+    loadVideoFeeds();
+  }, [loadVideoFeeds]);
 
   const getFeedForLane = (laneNo: number) => {
     return videoFeeds.find(feed => feed.lane_no === laneNo);
@@ -172,7 +172,7 @@ export const VideoFeedManager = ({
               {feed && feed.is_active ? (
                 <VideoFeed
                   intersectionId={intersectionId}
-                  direction={lane.direction as any}
+                  direction={lane.direction as 'North' | 'South' | 'East' | 'West'}
                 />
               ) : (
                 <Card>

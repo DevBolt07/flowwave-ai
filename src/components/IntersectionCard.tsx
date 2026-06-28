@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrafficLight } from "./TrafficLight";
-import { AlertTriangle, Car, Truck, Bike } from "lucide-react";
+import { AlertTriangle, Car } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LaneData {
@@ -23,7 +23,6 @@ interface IntersectionCardProps {
 }
 
 export const IntersectionCard = ({ 
-  id, 
   name, 
   lanes, 
   emergencyActive, 

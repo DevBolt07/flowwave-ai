@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -91,10 +91,7 @@ export const MapView = ({
   zoom = 13,
   className = "h-96 w-full rounded-lg overflow-hidden",
 }: MapViewProps) => {
-  const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
-
   const handleIntersectionClick = (intersection: MapIntersection) => {
-    setSelectedIntersection(intersection.id);
     onIntersectionClick?.(intersection);
   };
 

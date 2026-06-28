@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Navigation, AlertTriangle, MapPin, Video, Activity, Ambulance } from "lucide-react";
+import { ArrowLeft, AlertTriangle, MapPin, Video, Activity, Ambulance } from "lucide-react";
 import { VideoFeed } from "./VideoFeed";
 import { EmergencyMap, Hospital } from "./EmergencyMap";
-import { getHospitals, getAmbulances } from "@/lib/supabase-api";
+import { getHospitals, getAmbulances, Ambulance as AmbulanceType } from "@/lib/supabase-api";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeData } from "@/hooks/useRealtimeData";
 import { useEmergencySimulation } from "@/hooks/useEmergencySimulation";
@@ -19,7 +19,7 @@ interface EmergencyDashboardProps {
 
 export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [ambulances, setAmbulances] = useState<any[]>([]);
+  const [ambulances, setAmbulances] = useState<AmbulanceType[]>([]);
   const [selectedIntersection, setSelectedIntersection] = useState<string | null>(null);
   const [simulationInitialized, setSimulationInitialized] = useState(false);
   const { toast } = useToast();
@@ -29,18 +29,18 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
   useEffect(() => {
     loadMapData();
     initializeSimulation();
-  }, []);
+  }, [loadMapData, initializeSimulation]);
 
-  const loadMapData = async () => {
+  const loadMapData = useCallback(async () => {
     const [hospitalsData, ambulancesData] = await Promise.all([
       getHospitals(),
       getAmbulances()
     ]);
     setHospitals(hospitalsData as Hospital[]);
-    setAmbulances(ambulancesData);
-  };
+    setAmbulances(ambulancesData as AmbulanceType[]);
+  }, []);
 
-  const initializeSimulation = async () => {
+  const initializeSimulation = useCallback(async () => {
     try {
       const existingAmbulances = await getAmbulances();
       if (!existingAmbulances || existingAmbulances.length < 5) {
@@ -55,7 +55,7 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
     } catch (error) {
       console.error('Failed to initialize simulation:', error);
     }
-  };
+  }, [loadMapData, toast]);
   
   const selectedIntersectionLanes = selectedIntersection 
     ? getLanesByIntersection(selectedIntersection)
@@ -341,7 +341,7 @@ export const EmergencyDashboard = ({ onBack }: EmergencyDashboardProps) => {
                       <VideoFeed
                         key={lane.id}
                         intersectionId={selectedIntersection}
-                        direction={lane.direction as any}
+                        direction={lane.direction as 'North' | 'South' | 'East' | 'West'}
                         readOnly={true}
                       />
                     ))}

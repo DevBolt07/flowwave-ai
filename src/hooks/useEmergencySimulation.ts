@@ -1,14 +1,13 @@
 // Custom hook for Emergency Response Simulation
 // Manages the complete emergency workflow with OSRM routing
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   calculateOSRMRoute, 
   convertOSRMGeometryToLeaflet,
-  getMockRoute,
-  OSRMRouteResponse 
+  getMockRoute
 } from '@/lib/osrm-routing';
 import { 
   findNearestAvailableAmbulance, 

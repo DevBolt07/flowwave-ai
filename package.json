@@ -1,7 +1,9 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "flowwave-ai",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Smart Traffic System with Real-Time Video Analysis, Green Wave Corridor Optimization, and AI-Driven Signal Management",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

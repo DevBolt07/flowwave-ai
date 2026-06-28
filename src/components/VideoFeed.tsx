@@ -14,12 +14,11 @@ interface VideoFeedProps {
 }
 
 export const VideoFeed = ({
-  intersectionId,
+  intersectionId: _intersectionId,
   direction,
   readOnly = false,
 }: VideoFeedProps) => {
   const [feedType, setFeedType] = useState<'webcam' | 'upload' | 'url' | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [streamUrl, setStreamUrl] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -45,7 +44,6 @@ export const VideoFeed = ({
         videoRef.current.srcObject = mediaStream;
       }
       setFeedType('webcam');
-      setIsRecording(true);
       
       toast({
         title: "Webcam Connected",
@@ -66,7 +64,6 @@ export const VideoFeed = ({
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
-    setIsRecording(false);
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
@@ -81,7 +78,6 @@ export const VideoFeed = ({
         stream.getTracks().forEach(track => track.stop());
         setStream(null);
       }
-      setIsRecording(false);
       
       // Set feed type first to show video element
       setFeedType('upload');

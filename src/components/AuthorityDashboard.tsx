@@ -1,14 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { IntersectionCard } from "./IntersectionCard";
 import { TrafficLight } from "./TrafficLight";
 import { VideoFeed } from "./VideoFeed";
 import { ArrowLeft, Shield, Settings, AlertTriangle, Eye, Zap, Map as MapIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useRealtimeData } from "@/hooks/useRealtimeData";
 import { MapView, MapIntersection } from "./MapView";
@@ -25,9 +22,6 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
   const {
     intersections,
     lanes,
-    emergencies,
-    logs,
-    loading,
     updateLane,
     createLog,
     getLanesByIntersection,
@@ -67,7 +61,7 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
         description: `${action.charAt(0).toUpperCase() + action.slice(1)} signal command sent`,
         variant: action === 'reset' ? 'default' : 'destructive'
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Override Failed",
         description: "Failed to update signal state",
@@ -326,7 +320,7 @@ export const AuthorityDashboard = ({ onBack }: AuthorityDashboardProps) => {
                         <VideoFeed
                           key={lane.id}
                           intersectionId={selectedIntersection}
-                          direction={lane.direction as any}
+                          direction={lane.direction as 'North' | 'South' | 'East' | 'West'}
                         />
                       ))}
                     </div>

@@ -1,143 +1,158 @@
-# Welcome to your Lovable project
+# FlowWave AI - Smart Traffic Management & Optimization System
 
-**URL**: https://lovable.dev/projects/125d1b55-f381-4b5e-a27f-b8e001304610
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Vite Version](https://img.shields.io/badge/vite-5.4.19-purple.svg)](#)
+[![React Version](https://img.shields.io/badge/react-18.3.1-blue.svg)](#)
 
----
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+FlowWave AI is a state-of-the-art, production-ready Smart Traffic Management and Optimization System. It integrates real-time video feed analysis (simulated AI detection), automatic Green Signal Time (GST) optimization using dynamic traffic density calculations, and emergency vehicle priority corridor routing ("Green Waves") to minimize delays and emergency response times.
 
 ---
 
-## Project Collaboration Guide
+## 🌟 Key Features
 
-Here is a simple guide for team members to collaborate on this project using GitHub.
+*   **🚦 Intelligent Signal Control**: Dynamic Green Signal Time (GST) calculation based on real-time vehicle density queues, adapting signal timings dynamically rather than relying on fixed timers.
+*   **🚨 Emergency Priority Corridor (Green Wave)**: Real-time routing for emergency vehicles (ambulances, fire trucks) with on-demand preemption that turns downstream signals green along the route.
+*   **📹 Live AI Video Analysis**: Virtual bounding box and object detection overlays simulating YOLOv8/RT-DETR inference on multi-lane intersection cameras.
+*   **👥 Role-Based Portals**:
+    *   **Citizen Dashboard**: Public map viewing of city-wide statistics, active emergency corridors, and intersection health cards.
+    *   **Traffic Authority Dashboard**: Live intersection video control, vehicle queue inspection, manual signal overrides, and GST configurations.
+    *   **Emergency Driver Dashboard**: Ambulance request system, destination routing, dynamic distance/ETA calculations, and priority corridor trigger.
+*   **⚡ Real-Time Sync**: Driven by Supabase Realtime replication to push signal states, vehicle counts, and emergency logs across all client views instantly.
 
-### **Step 1: Initial Setup (Do this once)**
+---
 
-First, everyone needs to get the project code onto their own computer.
+## 🛠️ Technology Stack
 
-1.  **Clone the Repository:** Get a copy of the project using the project's HTTPS URL.
+*   **Frontend Library**: React 18 & TypeScript
+*   **Bundler & Dev Server**: Vite
+*   **Styling**: Tailwind CSS & Shadcn UI (built on Radix UI primitives)
+*   **Database & Real-time**: Supabase (PostgreSQL with Real-time listeners)
+*   **Mapping & Routing**: Leaflet (via React-Leaflet) & OpenStreetMap (OSRM API)
+*   **State Management**: React Query (TanStack Query v5) & React Context
+
+---
+
+## ⚙️ Prerequisites
+
+Before setting up the project, make sure you have:
+*   [Node.js](https://nodejs.org/) (v18.0.0 or higher)
+*   [npm](https://www.npmjs.com/) (v9.0.0 or higher) or [Bun](https://bun.sh/)
+*   A [Supabase](https://supabase.com/) account and project configured
+
+---
+
+## 🚀 Setup & Installation
+
+1.  **Clone the Repository**:
     ```bash
     git clone https://github.com/DevBolt07/flowwave-ai.git
-    ```
-
-2.  **Go into the Project Folder:**
-    ```bash
     cd flowwave-ai
     ```
 
-3.  **Install Dependencies:** This installs all the tools the project needs. The `--legacy-peer-deps` flag helps avoid issues with dependency versions.
+2.  **Environment Configuration**:
+    Copy the example environment file and fill in your Supabase details:
+    ```bash
+    cp .env.example .env
+    ```
+    Then, open `.env` and fill in the parameters.
+
+3.  **Install Dependencies**:
+    Install all required node packages using peer dependency compatibility:
     ```bash
     npm install --legacy-peer-deps
     ```
 
-4.  **Run the Development Server:**
+4.  **Database Migration & Seeding**:
+    Make sure your Supabase project is active. You can apply the migrations using the Supabase CLI:
     ```bash
-    npm run dev
+    supabase db push
     ```
-    You should now have the project running locally!
-
----
-
-### **Step 2: Daily Workflow**
-
-Follow these steps each time you start working on a task.
-
-1.  **Switch to Your Branch:** Go to your dedicated branch for the feature you're working on. If you don't have the branch locally yet, this command will create it and track the remote branch.
-
-    *   For the **Authority Dashboard**:
-        ```bash
-        git checkout feature/authority-dashboard
-        ```
-    *   For the **Citizen Dashboard**:
-        ```bash
-        git checkout feature/citizen-dashboard
-        ```
-    *   For the **Emergency Dashboard**:
-        ```bash
-        git checkout feature/emergency-dashboard
-        ```
-
-2.  **Pull Latest Changes:** Before you start coding, make sure you have the latest version of the branch from GitHub. This prevents conflicts later.
-
-    *   On `feature/authority-dashboard`:
-        ```bash
-        git pull origin feature/authority-dashboard
-        ```
-    *   On `feature/citizen-dashboard`:
-        ```bash
-        git pull origin feature/citizen-dashboard
-        ```
-    *   On `feature/emergency-dashboard`:
-        ```bash
-        git pull origin feature/emergency-dashboard
-        ```
-
-3.  **Start Coding!** Now you can work on your files.
-    *   **Authority Dashboard**: `AuthorityDashboard.tsx`
-    *   **Citizen Dashboard**: `CitizenDashboard.tsx`
-    *   **Emergency Dashboard**: `EmergencyDashboard.tsx` and `MapView.tsx`
-
----
-
-### **Step 3: Pushing Your Code**
-
-When you've made some progress and want to save it to GitHub, follow these steps.
-
-1.  **Add Your Changes:** Prepare all your changed files to be saved.
+    Or execute the SQL scripts under `./supabase/migrations` sequentially inside the Supabase SQL editor. To seed the database with mock intersection and ambulance coordinate nodes for Pune, execute:
     ```bash
-    git add .
+    npm run seed
     ```
-
-2.  **Commit Your Changes:** Save a snapshot of your work with a clear message describing what you did.
-    ```bash
-    git commit -m "Your descriptive message here"
-    # Example: git commit -m "feat: Add new map view to emergency dashboard"
-    ```
-
-3.  **Push Your Work to GitHub:** This uploads your saved changes from your computer to your specific branch on GitHub.
-
-    *   On `feature/authority-dashboard`:
-        ```bash
-        git push origin feature/authority-dashboard
-        ```
-    *   On `feature/citizen-dashboard`:
-        ```bash
-        git push origin feature/citizen-dashboard
-        ```
-    *   On `feature/emergency-dashboard`:
-        ```bash
-        git push origin feature/emergency-dashboard
-        ```
+    *(Note: Ensure your environment variables are configured before running the seed script).*
 
 ---
 
-### **Step 4: Creating a Pull Request (PR)**
+## 🏃 How to Run
 
-When your feature is complete and you want to merge it into the main project, you need to create a Pull Request. This allows other team members to review your code before it gets added to the `main` branch.
+### Development Mode
+Launch the local Vite server:
+```bash
+npm run dev
+```
+The application will be accessible at `http://localhost:8080` (or the fallback address shown in the terminal).
 
-1.  **Go to GitHub:** Open the repository in your web browser: [https://github.com/DevBolt07/flowwave-ai](https://github.com/DevBolt07/flowwave-ai)
+### Production Build
+Compile the optimized production bundle:
+```bash
+npm run build
+```
+This builds static assets under the `dist/` directory.
 
-2.  **Open a Pull Request:** After you've pushed your branch, you will see a yellow banner with your branch name and a "Compare & pull request" button. Click it.
-    *   If you don't see the banner, go to the "Pull requests" tab and click "New pull request".
+### Preview Build
+Preview the production build locally:
+```bash
+npm run preview
+```
 
-3.  **Review Your PR:**
-    *   Make sure the `base` branch is `main` and the `compare` branch is your feature branch (e.g., `feature/authority-dashboard`).
-    *   Give your pull request a clear title and a description of the changes you made.
-    *   Click "Create pull request".
-
-4.  **Review and Merge:** Your team will now be able to review your code, suggest changes, and approve the pull request. Once approved, it can be merged into the `main` branch.
+### Code Linting
+Scan files for TypeScript, React hooks, and ESLint rule infractions:
+```bash
+npm run lint
+```
 
 ---
 
-## How can I deploy this project?
+## 🔑 Environment Variables
 
-Simply open [Lovable](https://lovable.dev/projects/125d1b55-f381-4b5e-a27f-b8e001304610) and click on Share -> Publish.
+The application reads the following environment variables during build and runtime:
+
+| Variable Name | Description | Required | Default Value |
+| :--- | :--- | :---: | :--- |
+| `VITE_SUPABASE_PROJECT_ID` | The ID of your Supabase project. | **Yes** | — |
+| `VITE_SUPABASE_URL` | The API URL generated by Supabase. | **Yes** | — |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | The anonymous public key from Supabase API tab. | **Yes** | — |
+| `VITE_API_BASE_URL` | Base endpoint for backend Python/Go server. | No | `http://localhost:5000/api` |
+| `VITE_OSRM_SERVER_URL` | Self-hosted or public OSRM server routing endpoint. | No | `http://localhost:5000` |
+
+---
+
+## 📁 Folder Structure Overview
+
+```
+flowwave-ai/
+├── public/                  # Public static assets
+├── src/
+│   ├── components/          # Reusable React components
+│   │   ├── ui/              # Shadcn UI library components
+│   │   ├── TrafficLight.tsx # Traffic light state renderer
+│   │   ├── VideoFeed.tsx    # Live camera analysis & canvas box overlay
+│   │   └── MapView.tsx      # OpenStreetMap route & marker manager
+│   ├── contexts/            # React state contexts (AuthContext.tsx)
+│   ├── hooks/               # Custom hooks (Simulation & Realtime data)
+│   ├── integrations/        # External clients (Supabase configuration)
+│   ├── lib/                 # Core utilities, API helpers & mathematical calculations
+│   ├── pages/               # Top-level page views (Index, Auth, NotFound)
+│   ├── scripts/             # Data seeding and maintenance scripts
+│   ├── App.tsx              # Application layout & routing definitions
+│   └── main.tsx             # Application entrypoint
+├── supabase/                # Supabase configurations & Migrations
+│   ├── functions/           # Edge Functions (GST calculation, Vehicle detection)
+│   └── migrations/          # PostgreSQL database schema migrations
+└── package.json             # Build configurations & node dependencies
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions to FlowWave AI are highly welcomed! Please consult [CONTRIBUTING.md](./CONTRIBUTING.md) for project guidelines, branch naming structures, and coding standards.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
