@@ -1,4 +1,4 @@
-# FlowWave AI - Smart Traffic Management & Optimization System
+# FlowWave AI - Smart Traffic Management & Optimization System (Monorepo)
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
@@ -7,13 +7,15 @@
 
 FlowWave AI is a state-of-the-art, production-ready Smart Traffic Management and Optimization System. It integrates real-time video feed analysis (simulated AI detection), automatic Green Signal Time (GST) optimization using dynamic traffic density calculations, and emergency vehicle priority corridor routing ("Green Waves") to minimize delays and emergency response times.
 
+This project is organized as an **npm Workspaces Monorepo** separating the **Frontend React application** and the **Backend Node.js Express server**.
+
 ---
 
 ## 🌟 Key Features
 
 *   **🚦 Intelligent Signal Control**: Dynamic Green Signal Time (GST) calculation based on real-time vehicle density queues, adapting signal timings dynamically rather than relying on fixed timers.
 *   **🚨 Emergency Priority Corridor (Green Wave)**: Real-time routing for emergency vehicles (ambulances, fire trucks) with on-demand preemption that turns downstream signals green along the route.
-*   **📹 Live AI Video Analysis**: Virtual bounding box and object detection overlays simulating YOLOv8/RT-DETR inference on multi-lane intersection cameras.
+*   **📹 Live AI Video Analysis**: Virtual bounding box overlay simulating YOLOv8/RT-DETR inference on multi-lane intersection cameras.
 *   **👥 Role-Based Portals**:
     *   **Citizen Dashboard**: Public map viewing of city-wide statistics, active emergency corridors, and intersection health cards.
     *   **Traffic Authority Dashboard**: Live intersection video control, vehicle queue inspection, manual signal overrides, and GST configurations.
@@ -22,14 +24,16 @@ FlowWave AI is a state-of-the-art, production-ready Smart Traffic Management and
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Monorepo Structure & Tech Stack
 
-*   **Frontend Library**: React 18 & TypeScript
-*   **Bundler & Dev Server**: Vite
-*   **Styling**: Tailwind CSS & Shadcn UI (built on Radix UI primitives)
-*   **Database & Real-time**: Supabase (PostgreSQL with Real-time listeners)
-*   **Mapping & Routing**: Leaflet (via React-Leaflet) & OpenStreetMap (OSRM API)
-*   **State Management**: React Query (TanStack Query v5) & React Context
+The project contains two main workspaces:
+
+1.  **`frontend/`**: Vite React + TypeScript client.
+    *   **Styling**: Tailwind CSS & Shadcn UI (built on Radix UI primitives)
+    *   **Mapping & Routing**: Leaflet (via React-Leaflet) & OpenStreetMap (OSRM API)
+    *   **State Management**: React Query (TanStack Query v5) & React Context
+2.  **`backend/`**: Node.js Express + TypeScript server placeholder for API extensions.
+3.  **`supabase/`**: Supabase migrations, edge functions, and consolidated SQL schema.
 
 ---
 
@@ -37,7 +41,7 @@ FlowWave AI is a state-of-the-art, production-ready Smart Traffic Management and
 
 Before setting up the project, make sure you have:
 *   [Node.js](https://nodejs.org/) (v18.0.0 or higher)
-*   [npm](https://www.npmjs.com/) (v9.0.0 or higher) or [Bun](https://bun.sh/)
+*   [npm](https://www.npmjs.com/) (v9.0.0 or higher)
 *   A [Supabase](https://supabase.com/) account and project configured
 
 ---
@@ -50,73 +54,64 @@ Before setting up the project, make sure you have:
     cd flowwave-ai
     ```
 
-2.  **Environment Configuration**:
-    Copy the example environment file and fill in your Supabase details:
+2.  **Install Monorepo Workspaces Dependencies**:
+    Run `npm install` in the **root** folder. This automatically resolves packages for both frontend and backend subfolders and links them:
     ```bash
-    cp .env.example .env
+    npm install
     ```
-    Then, open `.env` and fill in the parameters.
 
-3.  **Install Dependencies**:
-    Install all required node packages using peer dependency compatibility:
-    ```bash
-    npm install --legacy-peer-deps
-    ```
+3.  **Environment Configuration**:
+    *   **Frontend**: Copy `frontend/.env.example` to `frontend/.env` and fill in your Supabase variables.
+        ```bash
+        cp frontend/.env.example frontend/.env
+        ```
+    *   **Backend**: Copy `backend/.env.example` to `backend/.env` and fill in your API parameters.
+        ```bash
+        cp backend/.env.example backend/.env
+        ```
 
 4.  **Database Migration & Seeding**:
-    Make sure your Supabase project is active. You can apply the migrations using the Supabase CLI:
+    Make sure your Supabase project is active. You can apply the migrations using the Supabase CLI, or copy and execute the consolidated [`supabase/schema.sql`](./supabase/schema.sql) file directly inside the Supabase SQL editor.
+    
+    To seed the database with mock intersections and ambulance node coordinates:
     ```bash
-    supabase db push
+    npm run seed -w frontend
     ```
-    Or execute the SQL scripts under `./supabase/migrations` sequentially inside the Supabase SQL editor. To seed the database with mock intersection and ambulance coordinate nodes for Pune, execute:
-    ```bash
-    npm run seed
-    ```
-    *(Note: Ensure your environment variables are configured before running the seed script).*
+    *(Note: Ensure frontend environment variables are configured in `frontend/.env` before running the seed script).*
 
 ---
 
 ## 🏃 How to Run
 
-### Development Mode
-Launch the local Vite server:
+### Development Mode (Concurrent)
+To launch **both** the frontend React app and the backend Express server concurrently with a single command from the root:
 ```bash
 npm run dev
 ```
-The application will be accessible at `http://localhost:8080` (or the fallback address shown in the terminal).
 
-### Production Build
-Compile the optimized production bundle:
+Alternatively, you can run them individually:
 ```bash
-npm run build
+# Run only the frontend
+npm run dev:frontend
+
+# Run only the backend
+npm run dev:backend
 ```
-This builds static assets under the `dist/` directory.
 
-### Preview Build
-Preview the production build locally:
+### Production Build & Preview (Frontend)
 ```bash
+# Compile frontend production bundle
+npm run build
+
+# Preview frontend production build locally
 npm run preview
 ```
 
 ### Code Linting
-Scan files for TypeScript, React hooks, and ESLint rule infractions:
 ```bash
+# Scan frontend files for ESLint / TypeScript rule violations
 npm run lint
 ```
-
----
-
-## 🔑 Environment Variables
-
-The application reads the following environment variables during build and runtime:
-
-| Variable Name | Description | Required | Default Value |
-| :--- | :--- | :---: | :--- |
-| `VITE_SUPABASE_PROJECT_ID` | The ID of your Supabase project. | **Yes** | — |
-| `VITE_SUPABASE_URL` | The API URL generated by Supabase. | **Yes** | — |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | The anonymous public key from Supabase API tab. | **Yes** | — |
-| `VITE_API_BASE_URL` | Base endpoint for backend Python/Go server. | No | `http://localhost:5000/api` |
-| `VITE_OSRM_SERVER_URL` | Self-hosted or public OSRM server routing endpoint. | No | `http://localhost:5000` |
 
 ---
 
@@ -124,25 +119,29 @@ The application reads the following environment variables during build and runti
 
 ```
 flowwave-ai/
-├── public/                  # Public static assets
-├── src/
-│   ├── components/          # Reusable React components
-│   │   ├── ui/              # Shadcn UI library components
-│   │   ├── TrafficLight.tsx # Traffic light state renderer
-│   │   ├── VideoFeed.tsx    # Live camera analysis & canvas box overlay
-│   │   └── MapView.tsx      # OpenStreetMap route & marker manager
-│   ├── contexts/            # React state contexts (AuthContext.tsx)
-│   ├── hooks/               # Custom hooks (Simulation & Realtime data)
-│   ├── integrations/        # External clients (Supabase configuration)
-│   ├── lib/                 # Core utilities, API helpers & mathematical calculations
-│   ├── pages/               # Top-level page views (Index, Auth, NotFound)
-│   ├── scripts/             # Data seeding and maintenance scripts
-│   ├── App.tsx              # Application layout & routing definitions
-│   └── main.tsx             # Application entrypoint
-├── supabase/                # Supabase configurations & Migrations
-│   ├── functions/           # Edge Functions (GST calculation, Vehicle detection)
-│   └── migrations/          # PostgreSQL database schema migrations
-└── package.json             # Build configurations & node dependencies
+├── frontend/                  # React Frontend App
+│   ├── public/                # Public static assets
+│   ├── src/                   # React components, pages, hooks, and routing
+│   │   ├── components/        # Reusable React components (ui/, MapView.tsx, etc.)
+│   │   ├── contexts/          # Contexts (AuthContext.tsx)
+│   │   ├── hooks/             # Custom React Hooks
+│   │   ├── integrations/      # Supabase Client client.ts
+│   │   ├── lib/               # Mathematical helpers and routing utilities
+│   │   ├── pages/             # Auth.tsx, Index.tsx, NotFound.tsx
+│   │   └── scripts/           # Data seeding files
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tsconfig.json
+├── backend/                   # Node.js Express Backend
+│   ├── src/                   # Server logic files (index.ts)
+│   ├── package.json
+│   └── tsconfig.json
+├── supabase/                  # Supabase Configurations
+│   ├── migrations/            # SQL migration files
+│   ├── functions/             # Deno Edge Functions
+│   └── schema.sql             # Consolidated Database Setup SQL Script
+├── package.json               # Root Workspace Coordinator package.json
+└── README.md
 ```
 
 ---

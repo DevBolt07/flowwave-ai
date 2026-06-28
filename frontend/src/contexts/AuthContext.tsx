@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
 
   // Load user profile
-  const loadProfile = async (userId: string) => {
+  const loadProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('users')
@@ -54,8 +54,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error loading profile:', error);
       setProfile(null);
+      
+      // Auto-logout if user exists in Auth but has no public.users profile row to prevent getting stuck
+      await supabase.auth.signOut();
+      toast({
+        variant: "destructive",
+        title: "Session Reset",
+        description: "Your profile could not be found. Please sign in or sign up again.",
+      });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     // Set up auth state listener
@@ -88,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [loadProfile]);
 
   const signIn = async (email: string, password: string) => {
     try {

@@ -125,6 +125,65 @@ const Auth = () => {
                     {loading ? 'Signing In...' : 'Sign In'}
                   </Button>
                 </form>
+
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or Quick Demo</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {[
+                    {
+                      role: 'normal',
+                      label: 'Citizen Demo',
+                      email: 'citizen@demo.com',
+                      password: 'demo123',
+                      icon: <Users className="w-4 h-4 text-blue-500" />,
+                    },
+                    {
+                      role: 'authority',
+                      label: 'Traffic Authority Demo',
+                      email: 'authority@demo.com',
+                      password: 'demo123',
+                      icon: <Shield className="w-4 h-4 text-green-500" />,
+                    },
+                    {
+                      role: 'emergency',
+                      label: 'Emergency Driver Demo',
+                      email: 'emergency@demo.com',
+                      password: 'demo123',
+                      icon: <Ambulance className="w-4 h-4 text-red-500" />,
+                    },
+                  ].map((demoUser) => (
+                    <div
+                      key={demoUser.role}
+                      className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/10 hover:bg-muted/20 transition-all duration-200"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div>{demoUser.icon}</div>
+                        <div className="text-left">
+                          <p className="text-xs font-semibold">{demoUser.label}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {demoUser.email} · {demoUser.password}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-8 px-3 hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                        onClick={() => setSignInData({ email: demoUser.email, password: demoUser.password })}
+                      >
+                        Auto-fill
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
